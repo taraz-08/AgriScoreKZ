@@ -1,0 +1,1707 @@
+'use strict';
+// ─── CHART REGISTRY ──────────────────────────────────────────────────────────
+const Charts = {};
+
+// ─── TOAST ───────────────────────────────────────────────────────────────────
+function showToast(message, type = 'success', duration = 4000) {
+  const icons = { success:'fa-check-circle', error:'fa-times-circle', warning:'fa-exclamation-triangle', info:'fa-info-circle' };
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.innerHTML = `<i class="fas ${icons[type]||icons.info} toast-icon"></i><span class="toast-text">${message}</span><button class="toast-close" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>`;
+  el.onclick = () => el.remove();
+  c.appendChild(el);
+  if (duration > 0) setTimeout(() => { if (el.parentNode) { el.classList.add('removing'); setTimeout(() => el.remove(), 300); } }, duration);
+}
+
+// ─── MODAL ────────────────────────────────────────────────────────────────────
+function showModal(title, body, footer = '', size = '') {
+  const ov = document.getElementById('modal-overlay');
+  ov.classList.remove('hidden');
+  ov.innerHTML = `<div class="modal ${size}" role="dialog">
+    <div class="modal-header">
+      <div class="modal-title">${title}</div>
+      <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">${body}</div>
+    ${footer ? `<div class="modal-footer">${footer}</div>` : ''}
+  </div>`;
+  ov.onclick = e => { if (e.target === ov) closeModal(); };
+}
+
+function closeModal() {
+  const ov = document.getElementById('modal-overlay');
+  ov.classList.add('hidden');
+  ov.innerHTML = '';
+}
+
+// Global confirm callback — window-ға тікелей жазылады
+window._confirmCb = null;
+
+function showConfirm(title, text, onYes, danger = true) {
+  window._confirmCb = onYes;
+  showModal(
+    `<i class="fas fa-exclamation-triangle" style="color:var(--warning)"></i> ${title}`,
+    `<p style="font-size:14px;color:var(--text-muted);line-height:1.6">${text}</p>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Болдырмау</button>
+     <button class="btn ${danger?'btn-danger':'btn-primary'}" onclick="if(window._confirmCb){var cb=window._confirmCb;window._confirmCb=null;closeModal();cb();}">Иә, растаймын</button>`,
+    'modal-sm'
+  );
+}
+
+// ─── LOADING ──────────────────────────────────────────────────────────────────
+function showLoading(text) {
+  const ov = document.getElementById('loading-overlay');
+  ov.classList.remove('hidden');
+  const p = ov.querySelector('p');
+  if (p) p.textContent = text || 'Жүктелуде...';
+}
+function hideLoading() { document.getElementById('loading-overlay').classList.add('hidden'); }
+
+// ─── GEMINI AI ────────────────────────────────────────────────────────────────
+const DEMO_AI_RESPONSES = {
+  score: `Бұл өтінімдер бойынша автоматты скоринг жүйесі 5 негізгі факторды ескерді:\n\n✅ **Субсидия тарихы (25%)** — Өтінімдер субсидияны бұрын тиімді пайдаланған.\n✅ **Өнімділік (30%)** — Аймақтық орташадан жоғары өнімділік деңгейі анықталды.\n⚠️ **Шаруашылық профилі (20%)** — Жер алаңы оңтайлы диапазонда.\n✅ **Әлеуметтік-экономикалық (15%)** — Ауылдық аймақта орналасқан, жұмыс орындары бар.\n✅ **Тәуекел бағасы (10%)** — Таза несие тарихы, салық берешегі жоқ.\n\nЖалпы баға: субсидия беруге **ұсынылады**.`,
+  risk: `Тәуекел талдауы негізінде:\n\n🟢 **Қаржылық тәуекел — ТӨМЕН**: Таза несие тарихы анықталды, банктік міндеттемелер жоқ.\n🟡 **Операциялық тәуекел — ОРТАША**: Техника паркі жеткілікті, бірақ ескіру деңгейін бақылау қажет.\n🟢 **Заңдық тәуекел — ТӨМЕН**: Сот дауы жоқ, салық берешегі тазаланған.\n\nЖалпы тәуекел деңгейі: **ТӨМЕН** ✅`,
+  recommend: `Скоринг нәтижелері мен тәуекел талдауы негізінде осы өтінімді субсидия беруге ҰСЫНАМЫЗ.\n\nНегіздеме:\n• Өнімділік аймақтық орташадан 15-20% жоғары\n• Бұрынғы субсидияларды толық игерген тарих бар\n• Ауылдық аймақта жұмыс орындарын қамтамасыз етеді\n• Тәуекел деңгейі төмен, қаржылық жағдайы тұрақты\n\nСубсидия сомасы бюджет шегінде бекітілуі мүмкін.`,
+  analyze: `Жүйеге жүктелген деректер талдауы:\n\n📊 **Жалпы сурет:**\n• Өтінімдердің 45%+ ұсынылуға лайықты (70+ балл)\n• Ең белсенді аймақтар: Алматы, Қостанай, Шығыс ҚЗ\n• Егіншілік саласы басым (48%)\n\n🔍 **Негізгі тенденциялар:**\n• Орташа жер алаңы: 450 га\n• Суландыру жүйесі бар шаруашылықтар жоғары балл алады\n• Техника саны >5 болған жағдайда балл 12-15%-ға артады\n\n💡 **Ұсыныс:** Shortlist үшін 65+ балл шегін қолдану оңтайлы.`,
+};
+
+async function callGemini(prompt, type = 'score') {
+  // API кілті серверде (.env) — frontend-те ешқашан көрінбейді
+  const res = await fetch('/api/gemini', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+  });
+  const d = await res.json();
+  // Серверде GEMINI_API_KEY орнатылмаған → demo режим
+  if (d.demo) {
+    await new Promise(r => setTimeout(r, 1200));
+    return DEMO_AI_RESPONSES[type] || DEMO_AI_RESPONSES.score;
+  }
+  if (!res.ok || d.error) throw new Error(d.error?.message || `API қатесі: ${res.status}`);
+  return d.candidates?.[0]?.content?.parts?.[0]?.text || 'Жауап алынбады';
+}
+
+function showAIModal(title, prompt, type = 'score') {
+  showModal(title,
+    `<div id="ai-loading" style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:32px">
+       <div style="font-size:40px;color:var(--primary);animation:spin 1.5s linear infinite"><i class="fas fa-seedling"></i></div>
+       <p style="font-size:13px;color:var(--text-muted)" id="ai-loading-text">AI талдауда...</p>
+     </div>
+     <div id="ai-result" style="display:none">
+       <div class="ai-response" id="ai-text" style="background:var(--primary-pale);border-left:3px solid var(--primary);border-radius:0 8px 8px 0;padding:16px;font-size:13px;line-height:1.8;white-space:pre-wrap"></div>
+       <p id="ai-footer-note" style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:right">🤖 AgriScore AI</p>
+     </div>`,
+    `<button class="btn btn-outline" onclick="closeModal()">Жабу</button>`,
+    'modal-lg'
+  );
+  // Check server gemini status first, then run
+  fetch('/api/gemini-status').then(r=>r.json()).then(s => {
+    const ltxt = document.getElementById('ai-loading-text');
+    if (ltxt) ltxt.textContent = s.hasKey ? 'Google Gemini талдауда...' : 'Demo жауап дайындалуда...';
+  }).catch(()=>{});
+
+  callGemini(prompt, type).then(text => {
+    const loading = document.getElementById('ai-loading');
+    const result = document.getElementById('ai-result');
+    const textEl = document.getElementById('ai-text');
+    const note = document.getElementById('ai-footer-note');
+    if (!loading || !result || !textEl) return;
+    loading.style.display = 'none';
+    result.style.display = 'block';
+    if (note) {
+      fetch('/api/gemini-status').then(r=>r.json()).then(s => {
+        note.textContent = s.hasKey ? '🤖 Google Gemini 2.5 Flash' : '⚠️ Demo режим — .env файлына GEMINI_API_KEY қосыңыз';
+      }).catch(()=>{});
+    }
+    typewriter(textEl, text, 15);
+  }).catch(err => {
+    const loading = document.getElementById('ai-loading');
+    if (loading) loading.innerHTML = `<p style="color:var(--danger)">❌ ${err.message}</p><p style="font-size:12px;color:var(--text-muted);margin-top:8px">server.js → .env файлын тексеріңіз</p>`;
+  });
+}
+
+function typewriter(el, text, speed = 20) {
+  el.textContent = '';
+  let i = 0;
+  const t = setInterval(() => {
+    if (i < text.length) { el.textContent += text[i++]; el.scrollTop = el.scrollHeight; }
+    else clearInterval(t);
+  }, speed);
+}
+
+// ─── ROUTER ───────────────────────────────────────────────────────────────────
+const PAGES = { '/login':'login', '/dashboard':'dashboard', '/applicants':'applicants',
+  '/scoring':'scoring', '/shortlist':'shortlist', '/analytics':'analytics',
+  '/upload':'upload', '/settings':'settings', '/methodology':'methodology' };
+
+function router() {
+  const hash = location.hash.replace('#','') || '/login';
+  const user = localStorage.getItem('agri_user');
+  if (!user && hash !== '/login') { location.hash = '#/login'; return; }
+
+  const detail = hash.match(/^\/applicants\/(.+)$/);
+  if (detail) { showPage('applicant-detail'); initApplicantDetail(detail[1]); setActiveNav('applicants'); return; }
+
+  const pid = PAGES[hash];
+  if (pid) { showPage(pid); setActiveNav(pid); }
+  else { location.hash = user ? '#/dashboard' : '#/login'; }
+}
+
+function showPage(id) {
+  const isLogin = id === 'login';
+  document.getElementById('page-login').style.display = isLogin ? 'flex' : 'none';
+  const shell = document.getElementById('app-shell');
+  shell.classList.toggle('hidden', isLogin);
+  if (!isLogin) {
+    document.querySelectorAll('#main-content .page').forEach(p => p.classList.remove('active'));
+    const pg = document.getElementById(`page-${id}`);
+    if (pg) { pg.classList.add('active'); setTimeout(() => initPage(id), 60); }
+    updateNavTitle(id);
+  }
+}
+
+const PAGE_INITS = { dashboard:initDashboard, applicants:initApplicants, scoring:initScoring,
+  shortlist:initShortlist, analytics:initAnalytics, upload:initUpload, settings:initSettings,
+  methodology:initMethodology };
+
+function initPage(id) { if (PAGE_INITS[id]) PAGE_INITS[id](); }
+
+function setActiveNav(id) {
+  document.querySelectorAll('.nav-item[data-page]').forEach(el => el.classList.toggle('active', el.dataset.page === id));
+  document.querySelectorAll('.bottom-nav-item[data-page]').forEach(el => el.classList.toggle('active', el.dataset.page === id));
+}
+
+function navigateTo(page) { location.hash = '#/' + page; }
+
+function updateNavTitle(id) {
+  const map = { dashboard:'Басқару тақтасы', applicants:'Өтінімдер', 'applicant-detail':'Өтінім',
+    scoring:'Скоринг', shortlist:'Shortlist', analytics:'Аналитика', upload:'Деректер жүктеу',
+    settings:'Параметрлер', methodology:'Методология' };
+  const el = document.getElementById('navbar-title');
+  if (el) el.textContent = map[id] || '';
+}
+
+function toggleSidebar() {
+  const shell = document.getElementById('app-shell');
+  shell.classList.toggle('sidebar-collapsed');
+  localStorage.setItem('agri_sidebar', shell.classList.contains('sidebar-collapsed') ? '1' : '0');
+}
+
+// ─── COUNTER ANIMATION ────────────────────────────────────────────────────────
+function animateCounter(el, target, dur = 1400) {
+  if (!el) return;
+  const start = performance.now();
+  const update = t => {
+    const p = Math.min((t - start) / dur, 1);
+    el.textContent = formatNumber(Math.floor((1 - Math.pow(1 - p, 3)) * target));
+    if (p < 1) requestAnimationFrame(update);
+  };
+  requestAnimationFrame(update);
+}
+
+function animateAllProgressBars() {
+  document.querySelectorAll('.progress-bar[data-width]').forEach(bar => {
+    const w = bar.dataset.width;
+    bar.style.width = '0%';
+    requestAnimationFrame(() => setTimeout(() => { bar.style.width = w + '%'; }, 100));
+  });
+}
+
+// ─── LOGIN ────────────────────────────────────────────────────────────────────
+function initLoginPage() {
+  const form = document.getElementById('login-form');
+  if (!form) return;
+  form.onsubmit = e => {
+    e.preventDefault();
+    const iin = document.getElementById('login-iin').value.trim();
+    const pass = document.getElementById('login-password').value.trim();
+    let ok = true;
+    document.getElementById('iin-group').classList.toggle('has-error', !iin);
+    document.getElementById('pass-group').classList.toggle('has-error', !pass);
+    if (!iin || !pass) return;
+
+    const btn = document.getElementById('login-btn');
+    const errEl = document.getElementById('login-error');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Тексерілуде...';
+    if (errEl) errEl.style.display = 'none';
+
+    fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login: iin, password: pass })
+    })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> <span data-i18n="loginBtn">Кіру</span>';
+      if (data.ok) {
+        localStorage.setItem('agri_user', JSON.stringify(data.user));
+        if (document.getElementById('login-remember').checked) localStorage.setItem('agri_remember_login', iin);
+        showToast(`✅ Қош келдіңіз, ${data.user.name}!`, 'success');
+        location.hash = '#/dashboard';
+      } else {
+        if (errEl) { errEl.textContent = data.error || 'Логин немесе пароль қате'; errEl.style.display = 'block'; }
+        document.getElementById('iin-group').classList.add('has-error');
+        document.getElementById('pass-group').classList.add('has-error');
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> <span data-i18n="loginBtn">Кіру</span>';
+      if (errEl) { errEl.textContent = 'Сервер қатесі — бетті жаңартыңыз'; errEl.style.display = 'block'; }
+    });
+  };
+
+  const toggleBtn = document.getElementById('toggle-password');
+  if (toggleBtn) toggleBtn.onclick = () => {
+    const inp = document.getElementById('login-password');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    toggleBtn.querySelector('i').className = inp.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+  };
+
+  const saved = localStorage.getItem('agri_remember_login');
+  if (saved) document.getElementById('login-iin').value = saved;
+}
+
+function showForgotModal() {
+  showModal('<i class="fas fa-lock"></i> Парольді қалпына келтіру',
+    '<p style="font-size:13px;line-height:1.8">АШМ IT қолдау қызметіне хабарласыңыз:<br><b>support@agrimin.kz</b><br>📞 +7 (7172) 55-97-55</p>',
+    '<button class="btn btn-primary" onclick="closeModal()">Жабу</button>', 'modal-sm');
+}
+
+function showEDSModal() {
+  showModal('<i class="fas fa-shield-alt"></i> ЭЦҚ арқылы кіру',
+    '<p style="font-size:13px;color:var(--text-muted)">Бұл функция дайындалуда. Жақын арада қол жетімді болады.</p>',
+    '<button class="btn btn-primary" onclick="closeModal()">Жабу</button>', 'modal-sm');
+}
+
+function handleLogout() {
+  localStorage.removeItem('agri_user');
+  location.hash = '#/login';
+  showToast('Жүйеден шықтыңыз', 'info');
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function initDashboard() {
+  const stats = AppState.getStats();
+  const today = new Date();
+  const d = document.getElementById('today-date');
+  if (d) d.textContent = formatDate(today);
+
+  animateCounter(document.getElementById('kpi-total'), stats.total);
+  animateCounter(document.getElementById('kpi-processing'), stats.processing);
+  animateCounter(document.getElementById('kpi-shortlisted'), stats.shortlisted);
+  const bEl = document.getElementById('kpi-budget');
+  if (bEl) { bEl.textContent = '0'; setTimeout(() => bEl.textContent = formatMoney(stats.totalRequested), 100); }
+
+  renderTopApplicants();
+  initDashboardAreaChart('30d');
+  initDashboardDonutChart(stats.byRegion);
+
+  const user = JSON.parse(localStorage.getItem('agri_user') || '{}');
+  const av = document.getElementById('navbar-avatar');
+  if (av) av.textContent = (user.login || 'A').charAt(0).toUpperCase();
+
+  setTimeout(animateAllProgressBars, 200);
+}
+
+function renderTopApplicants() {
+  const tbody = document.getElementById('top-applicants-tbody');
+  if (!tbody) return;
+  const top = AppState.applicants.slice(0, 5);
+  tbody.innerHTML = top.map((a, i) => `
+    <tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:10px 8px;width:36px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-size:12px;font-weight:700;background:${i<3?['#FFD700','#C0C0C0','#CD7F32'][i]:'var(--bg)'};color:${i<3?'#333':'var(--text-muted)'}">${i<3?['🥇','🥈','🥉'][i]:i+1}</span>
+      </td>
+      <td style="padding:10px 8px">
+        <div style="font-weight:600;font-size:13px">${a.name}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${a.region}</div>
+      </td>
+      <td style="padding:10px 8px"><span class="badge ${getScoreBadgeClass(a.totalScore)}">${a.totalScore}</span></td>
+      <td style="padding:10px 8px"><span class="badge ${getStatusBadgeClass(a.recommendation)}">${a.recommendation}</span></td>
+      <td style="padding:10px 8px"><button class="btn btn-sm btn-outline" onclick="navigateTo('applicants/${a.id}')" style="font-size:11px">Көру →</button></td>
+    </tr>`).join('');
+}
+
+function initDashboardAreaChart(period) {
+  const ctx = document.getElementById('dash-area-chart');
+  if (!ctx) return;
+  if (Charts.dashArea) Charts.dashArea.destroy();
+  const pts = period === '7d' ? 7 : period === '30d' ? 30 : 90;
+  const lang = window.currentLang || 'kk';
+  const months = TRANSLATIONS[lang].months;
+  const labels = [], d1 = [], d2 = [];
+  const now = new Date();
+  for (let i = pts - 1; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    labels.push(pts <= 30 ? `${d.getDate()} ${months[d.getMonth()]}` : months[d.getMonth()]);
+    d1.push(rnd(20, 120)); d2.push(rnd(10, 70));
+  }
+  const grd = ctx.getContext('2d').createLinearGradient(0,0,0,260);
+  grd.addColorStop(0,'rgba(27,94,32,0.25)'); grd.addColorStop(1,'rgba(27,94,32,0)');
+  const grd2 = ctx.getContext('2d').createLinearGradient(0,0,0,260);
+  grd2.addColorStop(0,'rgba(249,168,37,0.2)'); grd2.addColorStop(1,'rgba(249,168,37,0)');
+
+  Charts.dashArea = new Chart(ctx, {
+    type:'line', data:{ labels, datasets:[
+      { label:'Өтінімдер', data:d1, borderColor:'#1B5E20', backgroundColor:grd, fill:true, tension:0.4, pointRadius:3, pointHoverRadius:6 },
+      { label:'Мақұлданды', data:d2, borderColor:'#F9A825', backgroundColor:grd2, fill:true, tension:0.4, pointRadius:3 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'top', labels:{ usePointStyle:true, font:{ family:'Inter', size:12 } } }, tooltip:{ mode:'index', intersect:false } },
+      scales:{ x:{ grid:{ display:false }, ticks:{ font:{ size:11 }, maxTicksLimit:8 } }, y:{ beginAtZero:true, ticks:{ font:{ size:11 } } } }
+    }
+  });
+}
+
+function initDashboardDonutChart(byRegion) {
+  const ctx = document.getElementById('dash-donut-chart');
+  if (!ctx) return;
+  if (Charts.dashDonut) Charts.dashDonut.destroy();
+  const top = Object.entries(byRegion).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const colors = ['#1B5E20','#2E7D32','#388E3C','#43A047','#4CAF50','#66BB6A'];
+
+  Charts.dashDonut = new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels:top.map(r=>r[0]), datasets:[{ data:top.map(r=>r[1]), backgroundColor:colors, borderWidth:2, borderColor:'#fff', hoverOffset:8 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'65%',
+      plugins:{ legend:{ position:'bottom', labels:{ usePointStyle:true, font:{ family:'Inter', size:11 }, padding:8 } } }
+    }
+  });
+
+  // Progress bars below chart
+  const cont = document.getElementById('dash-progress-bars');
+  if (!cont) return;
+  const types = AppState.getStats().byType;
+  const total = Object.values(types).reduce((s,v)=>s+v,0);
+  const typeColors = { 'Егіншілік':'#1B5E20','Мал шаруашылығы':'#F9A825','Аралас':'#1565C0','Бақша':'#E53935' };
+  cont.innerHTML = Object.entries(types).map(([k,v]) => {
+    const pct = Math.round(v/total*100);
+    return `<div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span>${k}</span><span style="font-weight:600">${pct}%</span>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar" data-width="${pct}" style="background:${typeColors[k]||'var(--primary)'}"></div></div>
+    </div>`;
+  }).join('');
+  setTimeout(animateAllProgressBars, 300);
+}
+
+function setDashPeriod(period, btn) {
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  initDashboardAreaChart(period);
+}
+
+// ─── APPLICANTS ───────────────────────────────────────────────────────────────
+const appState = { filtered:[], page:1, perPage:25, sortCol:'totalScore', sortDir:'desc', selected:new Set() };
+
+function initApplicants() {
+  populateRegionFilter();
+  appState.filtered = [...AppState.applicants];
+  appState.page = 1;
+  sortApplicants();
+  renderApplicantsTable();
+
+  document.getElementById('app-search').oninput = debounce(filterApplicants, 250);
+  ['filter-region','filter-district','filter-type','filter-score','filter-status'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.onchange = filterApplicants;
+  });
+  document.getElementById('filter-region').onchange = function() {
+    const dist = document.getElementById('filter-district');
+    dist.innerHTML = '<option value="">Аудан</option>';
+    if (this.value && REGIONS_DATA[this.value]) {
+      REGIONS_DATA[this.value].forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; dist.appendChild(o); });
+    }
+    filterApplicants();
+  };
+
+  const selAll = document.getElementById('select-all-cb');
+  if (selAll) selAll.onchange = e => {
+    getPageIds().forEach(id => e.target.checked ? appState.selected.add(id) : appState.selected.delete(id));
+    renderApplicantsTable(); updateBulkBar();
+  };
+
+  document.querySelectorAll('#applicants-table thead th[data-sort]').forEach(th => {
+    th.onclick = () => {
+      const col = th.dataset.sort;
+      if (appState.sortCol === col) appState.sortDir = appState.sortDir === 'asc' ? 'desc' : 'asc';
+      else { appState.sortCol = col; appState.sortDir = 'desc'; }
+      document.querySelectorAll('#applicants-table thead th[data-sort]').forEach(h => h.classList.remove('sort-asc','sort-desc'));
+      th.classList.add(appState.sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      sortApplicants(); renderApplicantsTable();
+    };
+  });
+}
+
+function populateRegionFilter() {
+  const sel = document.getElementById('filter-region');
+  if (!sel || sel.options.length > 1) return;
+  REGIONS.forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = r; sel.appendChild(o); });
+}
+
+function filterApplicants() {
+  const q = (document.getElementById('app-search')?.value||'').toLowerCase();
+  const region = document.getElementById('filter-region')?.value||'';
+  const district = document.getElementById('filter-district')?.value||'';
+  const pType = document.getElementById('filter-type')?.value||'';
+  const scoreRange = document.getElementById('filter-score')?.value||'';
+  const status = document.getElementById('filter-status')?.value||'';
+
+  appState.filtered = AppState.applicants.filter(a => {
+    if (q && !a.name.toLowerCase().includes(q) && !a.iin.includes(q)) return false;
+    if (region && a.region !== region) return false;
+    if (district && a.district !== district) return false;
+    if (pType && a.productionType !== pType) return false;
+    if (status && a.recommendation !== status) return false;
+    if (scoreRange) {
+      const [mn, mx] = scoreRange.split('-').map(Number);
+      if (a.totalScore < mn || a.totalScore > (mx||100)) return false;
+    }
+    return true;
+  });
+  appState.page = 1;
+  sortApplicants();
+  renderApplicantsTable();
+
+  const activeCnt = ['filter-region','filter-district','filter-type','filter-score','filter-status'].filter(id=>document.getElementById(id)?.value).length;
+  const badge = document.getElementById('filter-badge');
+  if (badge) { badge.textContent = activeCnt > 0 ? `${activeCnt} сүзгі белсенді` : ''; badge.style.display = activeCnt > 0 ? 'inline-flex' : 'none'; }
+}
+
+function sortApplicants() {
+  const { sortCol, sortDir } = appState;
+  appState.filtered.sort((a,b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (typeof va === 'string') { va = va.toLowerCase(); vb = (vb||'').toLowerCase(); }
+    if (va < vb) return sortDir === 'asc' ? -1 : 1;
+    if (va > vb) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+}
+
+function renderApplicantsTable() {
+  const tbody = document.getElementById('applicants-tbody');
+  if (!tbody) return;
+  const { filtered, page, perPage, selected } = appState;
+  const start = (page-1)*perPage, rows = filtered.slice(start, start+perPage);
+  const countEl = document.getElementById('apps-count');
+  if (countEl) countEl.textContent = formatNumber(filtered.length);
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="12"><div class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-title">Нәтиже табылмады</div>
+      <div class="empty-subtitle">Іздеу немесе сүзгі параметрлерін өзгертіп көріңіз</div>
+      <button class="btn btn-outline" onclick="resetApplicantFilters()">Сүзгіні тазарту</button>
+    </div></td></tr>`;
+  } else {
+    tbody.innerHTML = rows.map((a, i) => `
+      <tr class="${selected.has(a.id)?'selected':''}" style="animation-delay:${i*30}ms">
+        <td><input type="checkbox" class="row-cb" data-id="${a.id}" ${selected.has(a.id)?'checked':''} onchange="toggleSelect('${a.id}',this.checked)" style="accent-color:var(--primary);cursor:pointer"></td>
+        <td style="color:var(--text-muted);font-size:12px">${a.rank}</td>
+        <td><span style="font-family:monospace;font-size:11px">${a.iin}</span></td>
+        <td><div style="font-weight:600">${a.name}</div><div style="font-size:11px;color:var(--text-muted)">${a.entityType}</div></td>
+        <td><div style="font-size:13px">${a.district}</div><div style="font-size:11px;color:var(--text-muted)">${a.region}</div></td>
+        <td style="font-size:13px">${a.productionType}</td>
+        <td style="font-size:13px">${formatNumber(a.landArea)} га</td>
+        <td><span class="badge ${getScoreBadgeClass(a.totalScore)} ${a.totalScore>=90?'badge-pulse':''}">${a.totalScore}</span></td>
+        <td style="font-size:13px;white-space:nowrap">${getRiskDot(a.riskLevel)} ${a.riskLevel}</td>
+        <td><span class="badge ${getStatusBadgeClass(a.recommendation)}">${a.recommendation}</span></td>
+        <td style="color:var(--text-muted);font-size:12px">${a.applicationDate}</td>
+        <td>
+          <div class="row-actions">
+            <button class="action-btn" onclick="navigateTo('applicants/${a.id}')" title="Көру"><i class="fas fa-eye"></i></button>
+            <button class="action-btn success" onclick="quickAddShortlist('${a.id}')" title="Shortlist"><i class="fas fa-star"></i></button>
+            <button class="action-btn" onclick="showScoreQuick('${a.id}')" title="Балл"><i class="fas fa-chart-bar"></i></button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+  renderPagination();
+  updateBulkBar();
+  updateSelectAll();
+}
+
+function toggleSelect(id, checked) {
+  checked ? appState.selected.add(id) : appState.selected.delete(id);
+  const row = document.querySelector(`[data-id="${id}"]`)?.closest('tr');
+  if (row) row.classList.toggle('selected', checked);
+  updateBulkBar(); updateSelectAll();
+}
+
+function getPageIds() {
+  const { filtered, page, perPage } = appState;
+  return filtered.slice((page-1)*perPage, page*perPage).map(a => a.id);
+}
+
+function updateSelectAll() {
+  const cb = document.getElementById('select-all-cb');
+  if (!cb) return;
+  const ids = getPageIds();
+  cb.checked = ids.length > 0 && ids.every(id => appState.selected.has(id));
+  cb.indeterminate = !cb.checked && ids.some(id => appState.selected.has(id));
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  if (!bar) return;
+  const n = appState.selected.size;
+  bar.classList.toggle('hidden', n === 0);
+  const el = document.getElementById('bulk-count');
+  if (el) el.textContent = `${n} жазба таңдалды`;
+}
+
+function clearBulkSelection() { appState.selected.clear(); renderApplicantsTable(); }
+
+function bulkAddShortlist() {
+  let added = 0;
+  appState.selected.forEach(id => { const a = AppState.getApplicant(id); if (a && AppState.addToShortlist(a)) added++; });
+  appState.selected.clear();
+  renderApplicantsTable();
+  showToast(`${added} өтінім shortlist-ке қосылды ✅`, 'success');
+}
+
+function bulkExport() {
+  const data = Array.from(appState.selected).map(id => AppState.getApplicant(id)).filter(Boolean);
+  exportToExcel(data, 'AgriScore_Selected');
+  showToast('Excel файлы жүктелді', 'success');
+}
+
+function resetApplicantFilters() {
+  ['app-search','filter-region','filter-district','filter-type','filter-score','filter-status'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  filterApplicants();
+  showToast('Сүзгілер тазартылды', 'info', 2000);
+}
+
+function renderPagination() {
+  const { filtered, page, perPage } = appState;
+  const total = Math.ceil(filtered.length / perPage);
+  const start = (page-1)*perPage+1, end = Math.min(page*perPage, filtered.length);
+  const pag = document.getElementById('pagination');
+  if (!pag) return;
+  pag.querySelector('.pagination-info').textContent = `${formatNumber(start)}-${formatNumber(end)} / ${formatNumber(filtered.length)}`;
+  const ctrl = pag.querySelector('.pagination-controls');
+  let html = `<button class="page-btn" onclick="goPage(${page-1})" ${page<=1?'disabled':''}>‹</button>`;
+  getPagRange(page, total).forEach(p => {
+    html += p==='...' ? `<span class="page-btn" style="cursor:default">…</span>` : `<button class="page-btn ${p===page?'active':''}" onclick="goPage(${p})">${p}</button>`;
+  });
+  html += `<button class="page-btn" onclick="goPage(${page+1})" ${page>=total?'disabled':''}>›</button>`;
+  ctrl.innerHTML = html;
+}
+
+function getPagRange(cur, total) {
+  if (total <= 7) return Array.from({length:total},(_,i)=>i+1);
+  const r = [1]; if (cur>3) r.push('...');
+  for (let i=Math.max(2,cur-1); i<=Math.min(total-1,cur+1); i++) r.push(i);
+  if (cur<total-2) r.push('...'); r.push(total);
+  return r;
+}
+
+function goPage(p) {
+  const total = Math.ceil(appState.filtered.length / appState.perPage);
+  if (p < 1 || p > total) return;
+  appState.page = p;
+  renderApplicantsTable();
+}
+
+function setApplicantPerPage(n) { appState.perPage = parseInt(n); appState.page = 1; renderApplicantsTable(); }
+
+function quickAddShortlist(id) {
+  const a = AppState.getApplicant(id);
+  if (!a) return;
+  if (AppState.addToShortlist(a)) showToast(`✅ ${a.name} shortlist-ке қосылды`, 'success');
+  else showToast('⚠️ Бұл өтінім shortlist-те бар', 'warning', 2000);
+}
+
+function showScoreQuick(id) {
+  const a = AppState.getApplicant(id);
+  if (!a) return;
+  showModal(`📊 ${a.name}`,
+    `<div style="text-align:center;padding:16px">
+      ${buildGaugeSVG(a.totalScore, 160)}
+      <div style="font-size:36px;font-weight:800;color:${getScoreColor(a.totalScore)};margin-top:-8px">${a.totalScore}</div>
+      <div style="font-size:12px;color:var(--text-muted)">Рейтинг: #${a.rank} / ${AppState.applicants.length}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:12px">
+      ${[{n:'Субсидия',s:a.factors?.f1||0,mx:25},{n:'Өнімділік',s:a.factors?.f2||0,mx:30},{n:'Профиль',s:a.factors?.f3||0,mx:20},{n:'Әлеум.',s:a.factors?.f4||0,mx:15},{n:'Тәуекел',s:a.factors?.f5||0,mx:10}]
+      .map(f=>`<div style="text-align:center;background:var(--bg);padding:8px;border-radius:8px">
+        <div style="font-size:16px;font-weight:700;color:var(--primary)">${f.s}</div>
+        <div style="font-size:9px;color:var(--text-muted);margin-top:2px">${f.n}</div>
+        <div style="font-size:9px;color:var(--text-muted)">/${f.mx}</div>
+      </div>`).join('')}
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Жабу</button>
+     <button class="btn btn-primary" onclick="closeModal();navigateTo('applicants/${id}')">Толық көру</button>`,
+    'modal-sm'
+  );
+  setTimeout(() => animateGauge(a.totalScore), 200);
+}
+
+// ─── APPLICANT DETAIL ─────────────────────────────────────────────────────────
+function initApplicantDetail(id) {
+  const a = AppState.getApplicant(id);
+  if (!a) { navigateTo('applicants'); return; }
+
+  // Breadcrumb & Hero
+  document.getElementById('breadcrumb-name').textContent = a.name;
+  document.getElementById('detail-avatar').textContent = a.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('detail-name').textContent = a.name;
+  document.getElementById('detail-iin-label').textContent = `ЖСН: ${a.iin} | БИН: ${a.bin||'—'}`;
+  document.getElementById('detail-location').innerHTML = `<i class="fas fa-map-marker-alt" style="color:var(--primary)"></i> ${a.region}, ${a.district}`;
+  document.getElementById('detail-badges').innerHTML = `<span class="badge badge-info">${a.productionType}</span> <span class="badge ${getStatusBadgeClass(a.recommendation)}">${a.recommendation}</span>`;
+  document.getElementById('detail-date').textContent = `📅 ${a.applicationDate}`;
+  document.getElementById('detail-rank').textContent = `Рейтинг: #${a.rank} / ${AppState.applicants.length}`;
+
+  // Gauge
+  const gc = document.getElementById('detail-gauge-container');
+  if (gc) {
+    gc.innerHTML = `${buildGaugeSVG(a.totalScore, 180)}
+      <div style="text-align:center;margin-top:-8px">
+        <div id="detail-score-num" style="font-size:40px;font-weight:800;color:${getScoreColor(a.totalScore)}">0</div>
+        <div style="font-size:12px;color:var(--text-muted)">Балл</div>
+      </div>`;
+    animateCounter(document.getElementById('detail-score-num'), a.totalScore);
+    setTimeout(() => animateGauge(a.totalScore), 200);
+  }
+
+  // Shortlist button
+  const slBtn = document.getElementById('detail-shortlist-btn');
+  if (slBtn) {
+    if (AppState.isInShortlist(id)) {
+      slBtn.innerHTML = `<i class="fas fa-check"></i> Shortlist-те`;
+      slBtn.className = 'btn btn-outline btn-sm'; slBtn.disabled = true;
+    } else {
+      slBtn.innerHTML = `<i class="fas fa-plus"></i> Shortlist-ке қосу`;
+      slBtn.className = 'btn btn-primary btn-sm'; slBtn.disabled = false;
+      slBtn.onclick = () => { AppState.addToShortlist(a); showToast('✅ Shortlist-ке қосылды','success'); initApplicantDetail(id); };
+    }
+  }
+
+  // AI button
+  const aiBtn = document.getElementById('detail-ai-btn');
+  if (aiBtn) aiBtn.onclick = () => {
+    const prompt = `Қазақстан ауылшаруашылығы субсидия жүйесі. Өтінімдер: ${a.name}, облыс: ${a.region}, өндіріс: ${a.productionType}, жер: ${a.landArea} га, балл: ${a.totalScore}/100. 5 фактор бойынша баллды қазақша түсіндіріңіз.`;
+    showAIModal('🤖 AI Скор түсіндірмесі', prompt, 'score');
+  };
+
+  // Tabs
+  document.querySelectorAll('#page-applicant-detail .tab-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('#page-applicant-detail .tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#page-applicant-detail .tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      const tgt = document.getElementById(btn.dataset.tab);
+      if (tgt) { tgt.classList.add('active'); renderDetailTab(btn.dataset.tab, a); }
+    };
+  });
+
+  renderDetailTab('tab-scoring', a);
+}
+
+function renderDetailTab(tab, a) {
+  if (tab === 'tab-scoring') renderScoringTab(a);
+  else if (tab === 'tab-data') renderDataTab(a);
+  else if (tab === 'tab-history') renderHistoryTab(a);
+  else if (tab === 'tab-docs') renderDocsTab(a);
+  else if (tab === 'tab-comments') renderCommentsTab(a);
+}
+
+function renderScoringTab(a) {
+  const inner = document.getElementById('scoring-tab-inner');
+  if (!inner) return;
+
+  const factors = [
+    { name:'Субсидия тарихы', weight:'25%', score:a.factors?.f1||0, max:25, items:[
+      {ok:a.breakdown?.hasPreviousSubsidy,text:'Алдыңғы субсидия бар',pts:10},
+      {ok:a.breakdown?.usedFullSubsidy,text:'100% игерілген',pts:8},
+      {ok:a.breakdown?.reportsOnTime,text:'Есептер уақытылы',pts:7},
+      {ok:a.breakdown?.noViolations,text:'Бұзушылықтар жоқ',pts:5},
+    ]},
+    { name:'Өнімділік', weight:'30%', score:a.factors?.f2||0, max:30, items:[
+      {ok:a.breakdown?.aboveAvgYield,text:'Орташадан жоғары өнімділік',pts:12},
+      {ok:a.breakdown?.positiveTrend,text:'3 жылдық өсу тренді',pts:10},
+      {ok:a.breakdown?.costEfficient,text:'Шығын тиімділігі',pts:8},
+    ]},
+    { name:'Шаруашылық профилі', weight:'20%', score:a.factors?.f3||0, max:20, items:[
+      {ok:a.breakdown?.landAreaOk,text:`Жер алаңы оңтайлы (${a.landArea} га)`,pts:8},
+      {ok:a.breakdown?.equipmentOk,text:`Техника саны >5 (${a.equipmentCount})`,pts:7},
+      {ok:a.breakdown?.hasIrrigation,text:'Суландыру жүйесі',pts:5},
+    ]},
+    { name:'Әлеуметтік-экономикалық', weight:'15%', score:a.factors?.f4||0, max:15, items:[
+      {ok:a.breakdown?.manyEmployees,text:`Қызметкерлер >10 (${a.employees} адам)`,pts:6},
+      {ok:a.breakdown?.isRural,text:'Ауылдық аймақ',pts:5},
+      {ok:a.breakdown?.isMinorityRegion,text:'Аз тараған аймақ',pts:4},
+    ]},
+    { name:'Тәуекел бағасы', weight:'10%', score:a.factors?.f5||0, max:10, items:[
+      {ok:a.breakdown?.cleanCreditHistory,text:'Таза несие тарихы',pts:4},
+      {ok:a.breakdown?.noTaxDebt,text:'Салық берешегі жоқ',pts:4},
+      {ok:a.breakdown?.noLegalDisputes,text:'Сот дауы жоқ',pts:2},
+    ]},
+  ];
+
+  const isRec = a.totalScore >= 65, isRev = a.totalScore >= 50 && a.totalScore < 65;
+  const recCls = isRec?'rec-green':isRev?'rec-yellow':'rec-red';
+  const recIcon = isRec?'✅':isRev?'⚠️':'❌';
+  const recTitle = isRec?'ҰСЫНЫЛАДЫ':isRev?'ТЕКСЕРУ ҚАЖЕТ':'ҰСЫНЫЛМАЙДЫ';
+  const recText = isRec
+    ? `${a.name} ${a.totalScore} балл жинады. Барлық факторлар жеткілікті нәтиже көрсетті.`
+    : isRev ? `${a.name} орташа нәтиже (${a.totalScore} балл). Қосымша тексеру қажет.`
+    : `${a.name} жеткіліксіз балл (${a.totalScore}). Субсидия беруге ұсынылмайды.`;
+
+  inner.innerHTML = `
+    <div class="alert alert-success mb-4">💡 Балл ${factors.length} фактор бойынша есептелді — <b>${a.totalScore}/100</b></div>
+    <div class="factors-grid" id="factors-grid-detail">
+      ${factors.map((f,fi) => `
+        <div class="factor-card">
+          <div class="factor-header">
+            <span class="factor-name">${f.name}</span>
+            <span class="badge badge-info" style="font-size:10px">${f.weight}</span>
+          </div>
+          <div class="factor-score-big">${f.score}<span style="font-size:14px;color:var(--text-muted)">/${f.max}</span></div>
+          <div class="progress-wrap mb-2">
+            <div class="progress-bar" data-width="${Math.round(f.score/f.max*100)}" style="background:${getScoreColor(Math.round(f.score/f.max*100))};transition:width 1s ease"></div>
+          </div>
+          <div class="factor-items">
+            ${f.items.map(item=>`<div class="factor-item"><span>${item.ok?'✅':'❌'}</span><span style="flex:1;font-size:11px">${item.text}</span><span class="pts">+${item.pts}</span></div>`).join('')}
+          </div>
+          <button class="btn btn-ghost btn-sm mt-2" style="width:100%;font-size:11px" onclick="explainFactor(${fi},'${a.id}')">🤖 Толығырақ</button>
+        </div>`).join('')}
+    </div>
+    <div class="card mt-4 mb-4">
+      <div class="card-header"><span class="card-title">Факторлар диаграммасы</span></div>
+      <div class="chart-wrapper"><canvas id="radar-chart"></canvas></div>
+    </div>
+    <div class="recommendation-box ${recCls}">
+      <div class="rec-title">${recIcon} ${recTitle}</div>
+      <div class="rec-text">${recText}</div>
+      <div class="rec-actions">
+        <button class="btn btn-primary btn-ripple" onclick="quickAddShortlist('${a.id}')"><i class="fas fa-star"></i> Shortlist</button>
+        <button class="btn btn-accent btn-ripple" onclick="showToast('Тексеруге жіберілді','info')"><i class="fas fa-search"></i> Тексеру</button>
+        <button class="btn btn-outline-danger btn-ripple" onclick="showToast('Бас тартылды','warning')"><i class="fas fa-times"></i> Бас тарту</button>
+      </div>
+    </div>`;
+
+  setTimeout(() => {
+    animateAllProgressBars();
+    initRadarChart(a);
+  }, 100);
+}
+
+function explainFactor(idx, id) {
+  const a = AppState.getApplicant(id);
+  const names = ['Субсидия тарихы','Өнімділік','Шаруашылық профилі','Әлеуметтік-экономикалық','Тәуекел бағасы'];
+  const scores = [a?.factors?.f1,a?.factors?.f2,a?.factors?.f3,a?.factors?.f4,a?.factors?.f5];
+  const prompt = `${a?.name} өтінімі бойынша "${names[idx]}" факторының ${scores[idx]} баллын қазақша 3-4 сөйлемде түсіндіріңіз.`;
+  showAIModal(`🤖 ${names[idx]}`, prompt, 'score');
+}
+
+function initRadarChart(a) {
+  const ctx = document.getElementById('radar-chart');
+  if (!ctx) return;
+  if (Charts.radar) Charts.radar.destroy();
+  const maxes = [25,30,20,15,10];
+  const scores = [a.factors?.f1||0,a.factors?.f2||0,a.factors?.f3||0,a.factors?.f4||0,a.factors?.f5||0];
+  const norm = scores.map((s,i)=>Math.round(s/maxes[i]*100));
+  Charts.radar = new Chart(ctx, {
+    type:'radar',
+    data:{
+      labels:['Субсидия\nтарихы','Өнімділік','Шаруашылық\nпрофилі','Әлеуметтік-\nэконом.','Тәуекел\nбағасы'],
+      datasets:[
+        {label:'Өтінімдер',data:norm,backgroundColor:'rgba(27,94,32,0.2)',borderColor:'#1B5E20',borderWidth:2,pointBackgroundColor:'#1B5E20',pointRadius:4},
+        {label:'Аймақтық орташа',data:[60,55,50,45,65],backgroundColor:'rgba(21,101,192,0.1)',borderColor:'#1565C0',borderWidth:2,borderDash:[5,5],pointRadius:3}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{r:{min:0,max:100,ticks:{stepSize:25,font:{size:9}},grid:{color:'rgba(0,0,0,0.05)'},pointLabels:{font:{family:'Inter',size:11}}}},
+      plugins:{legend:{position:'bottom',labels:{font:{family:'Inter',size:12},usePointStyle:true}}}
+    }
+  });
+}
+
+function renderDataTab(a) {
+  const el = document.getElementById('data-tab-content');
+  if (!el) return;
+  el.innerHTML = `<div class="data-grid">
+    <div class="card data-card"><h4><i class="fas fa-id-card"></i> Жалпы мәліметтер</h4>
+      ${dr('ЖСН',a.iin)}${dr('БИН',a.bin||'—')}${dr('Нысан түрі',a.entityType)}${dr('Тіркелген',a.registrationDate)}${dr('Субсидия түрі',a.subsidyType)}
+    </div>
+    <div class="card data-card"><h4><i class="fas fa-map-marker-alt"></i> Орналасу</h4>
+      ${dr('Облыс',a.region)}${dr('Аудан',a.district)}${dr('Аймақ',a.isRural?'🌾 Ауылдық':'🏙 Қалалық')}
+    </div>
+    <div class="card data-card"><h4><i class="fas fa-tractor"></i> Жер қоры</h4>
+      ${dr('Жалпы алаң',formatNumber(a.landArea)+' га')}${dr('Меншік',formatNumber(a.landOwned)+' га')}${dr('Жалға алынған',formatNumber(a.landLeased)+' га')}${dr('Суландыру',a.hasIrrigation?'✅ Бар':'❌ Жоқ')}
+    </div>
+    <div class="card data-card"><h4><i class="fas fa-seedling"></i> Өндіріс</h4>
+      ${dr('Өндіріс түрі',a.productionType)}${a.mainCrops?.length?dr('Дақылдар',a.mainCrops.join(', ')):''}${a.livestock?dr('Мал басы',formatNumber(a.livestock)+' бас'):''}${dr('Өнімділік',a.productivity+'%')}
+    </div>
+    <div class="card data-card"><h4><i class="fas fa-chart-line"></i> Қаржы</h4>
+      ${dr('Жылдық айналым',formatMoney(a.annualRevenue))}${dr('Таза пайда',formatMoney(a.netProfit))}${dr('Сұралған субсидия',formatMoney(a.requestedAmount))}
+    </div>
+    <div class="card data-card"><h4><i class="fas fa-tools"></i> Ресурстар</h4>
+      ${dr('Техника саны',a.equipmentCount+' бірлік')}${dr('Қызметкерлер',a.employees+' адам')}
+    </div>
+  </div>`;
+}
+
+function dr(k, v) { return `<div class="data-row"><span class="data-key">${k}</span><span class="data-val">${v}</span></div>`; }
+
+function renderHistoryTab(a) {
+  const el = document.getElementById('history-tab-content');
+  if (!el) return;
+  const hist = a.subsidyHistory || [];
+  if (!hist.length) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">Субсидия тарихы жоқ</div></div>`; return; }
+  const total = hist.reduce((s,h)=>s+h.amount,0);
+  const avgUtil = Math.round(hist.reduce((s,h)=>s+h.utilization,0)/hist.length);
+  el.innerHTML = `
+    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <div class="card" style="flex:1;min-width:140px;text-align:center;padding:16px">
+        <div style="font-size:22px;font-weight:800;color:var(--primary)">${formatMoney(total)}</div>
+        <div style="font-size:12px;color:var(--text-muted)">Барлығы алды</div>
+      </div>
+      <div class="card" style="flex:1;min-width:140px;text-align:center;padding:16px">
+        <div style="font-size:22px;font-weight:800;color:var(--accent)">${avgUtil}%</div>
+        <div style="font-size:12px;color:var(--text-muted)">Орташа игерілу</div>
+      </div>
+    </div>
+    <div class="timeline">
+      ${hist.map(h=>`<div class="timeline-item">
+        <div class="timeline-dot">${String(h.year).slice(-2)}</div>
+        <div class="timeline-card">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <b>${h.type}</b><span class="badge ${h.utilization>=90?'badge-success':'badge-warning'}">${h.status}</span>
+          </div>
+          <div style="font-size:13px;color:var(--text-muted);display:flex;gap:16px">
+            <span>💰 ${formatMoney(h.amount)}</span><span>📈 ${h.utilization}%</span>
+          </div>
+          <div class="progress-wrap mt-2">
+            <div class="progress-bar" style="width:${h.utilization}%;background:${h.utilization>=90?'var(--success)':'var(--warning)'}"></div>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div class="card mt-4" style="padding:16px">
+      <div class="card-header mb-2"><span class="card-title">Жылдар бойынша</span></div>
+      <div class="chart-wrapper-sm"><canvas id="hist-bar-chart"></canvas></div>
+    </div>`;
+
+  setTimeout(() => {
+    const ctx = document.getElementById('hist-bar-chart');
+    if (ctx) new Chart(ctx, { type:'bar',
+      data:{ labels:hist.map(h=>h.year), datasets:[
+        {label:'Сома (млн)',data:hist.map(h=>+(h.amount/1e6).toFixed(1)),backgroundColor:'#1B5E20',borderRadius:4},
+        {label:'Игерілу %',data:hist.map(h=>h.utilization),backgroundColor:'#F9A825',borderRadius:4,yAxisID:'y1'}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:11},usePointStyle:true}}},
+        scales:{y:{beginAtZero:true,ticks:{font:{size:10}}},y1:{position:'right',min:0,max:100,grid:{drawOnChartArea:false},ticks:{callback:v=>v+'%',font:{size:10}}}}}
+    });
+  }, 100);
+}
+
+function renderDocsTab(a) {
+  const el = document.getElementById('docs-tab-content');
+  if (!el) return;
+  const docs = [
+    {name:'Жер учаскесіне құқық',icon:'fa-file-alt',ok:true},{name:'Мемлекеттік тіркеу',icon:'fa-building',ok:true},
+    {name:'Банк үзіндісі',icon:'fa-university',ok:true},{name:'Техника тізімі',icon:'fa-tractor',ok:a.equipmentCount>0},
+    {name:'Салық берешексіздігі',icon:'fa-receipt',ok:a.breakdown?.noTaxDebt},{name:'Страхование полисі',icon:'fa-shield-alt',ok:false},
+    {name:'Өнімділік есебі',icon:'fa-chart-line',ok:a.breakdown?.aboveAvgYield},
+  ];
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <span style="font-size:13px;color:var(--text-muted)">${docs.length} құжат</span>
+      <button class="btn btn-sm btn-outline"><i class="fas fa-download"></i> Барлығын жүктеу</button>
+    </div>
+    <div class="docs-grid">
+      ${docs.map(d=>`<div class="doc-item">
+        <i class="fas ${d.icon} doc-icon"></i>
+        <div class="doc-info"><div class="doc-name">${d.name}</div><div class="doc-meta">${formatDate(new Date())}</div></div>
+        <span style="font-size:18px">${d.ok?'✅':'❌'}</span>
+      </div>`).join('')}
+    </div>`;
+}
+
+function renderCommentsTab(a) {
+  const el = document.getElementById('comments-tab-content');
+  if (!el) return;
+  const comments = AppState.getComments(a.id);
+  el.innerHTML = `
+    <div class="comments-list mb-4" id="comments-list">
+      ${!comments.length ? `<div class="empty-state" style="padding:24px"><div class="empty-icon">💬</div><div class="empty-title">Комментарийлер жоқ</div></div>` : ''}
+      ${comments.map(c=>`<div class="comment-item">
+        <div class="comment-avatar">${c.author.charAt(0).toUpperCase()}</div>
+        <div class="comment-body">
+          <div class="comment-meta"><span class="comment-author">${c.author}</span> · ${c.date} ${c.time}</div>
+          <div class="comment-text">${c.text}</div>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div class="card" style="padding:16px">
+      <textarea id="comment-input" class="form-control" rows="3" placeholder="Комментарий жазыңыз..." style="resize:vertical;margin-bottom:10px"></textarea>
+      <div style="display:flex;gap:8px;justify-content:space-between">
+        <button class="btn btn-ghost btn-sm" onclick="generateAIComment('${a.id}')">🤖 AI Ұсыным жаз</button>
+        <button class="btn btn-primary btn-sm" onclick="submitComment('${a.id}')"><i class="fas fa-paper-plane"></i> Жіберу</button>
+      </div>
+    </div>`;
+}
+
+function submitComment(id) {
+  const input = document.getElementById('comment-input');
+  if (!input?.value.trim()) { showToast('Комментарий бос', 'warning', 2000); return; }
+  const user = JSON.parse(localStorage.getItem('agri_user')||'{}');
+  AppState.addComment(id, input.value.trim(), user.login || 'Пайдаланушы');
+  const a = AppState.getApplicant(id);
+  if (a) renderCommentsTab(a);
+  showToast('✅ Комментарий қосылды', 'success', 2000);
+}
+
+function generateAIComment(id) {
+  const a = AppState.getApplicant(id);
+  if (!a) return;
+  const input = document.getElementById('comment-input');
+  if (input) { input.value = '⏳ AI жазуда...'; input.disabled = true; }
+  callGemini(`${a.name} субсидия өтінімі бойынша ресми ұсыным мәтінін қазақша жазыңыз. Балл: ${a.totalScore}/100. 2-3 сөйлем.`, 'recommend')
+    .then(text => { if (input) { input.value = text; input.disabled = false; input.focus(); } })
+    .catch(() => { if (input) { input.value = ''; input.disabled = false; } showToast('Қате орын алды', 'error'); });
+}
+
+// ─── GAUGE SVG ────────────────────────────────────────────────────────────────
+function buildGaugeSVG(score, size = 180) {
+  const r = 70, cx = 90, cy = 90;
+  const circ = 2 * Math.PI * r, arcLen = circ * 0.75;
+  const color = score >= 70 ? '#1B5E20' : score >= 50 ? '#F9A825' : '#C62828';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 180 180" style="transform:rotate(-135deg)">
+    <circle fill="none" stroke="var(--bg)" stroke-width="10" cx="${cx}" cy="${cy}" r="${r}"
+      stroke-dasharray="${arcLen} ${circ}" stroke-linecap="round"/>
+    <circle fill="none" stroke="${color}" stroke-width="10" cx="${cx}" cy="${cy}" r="${r}"
+      stroke-linecap="round" id="gauge-fill"
+      stroke-dasharray="${arcLen} ${circ}" stroke-dashoffset="${arcLen}"/>
+  </svg>`;
+}
+
+function animateGauge(score) {
+  const fill = document.getElementById('gauge-fill');
+  if (!fill) return;
+  const r = 70, circ = 2*Math.PI*r, arcLen = circ*0.75;
+  const filled = arcLen * Math.max(0, Math.min(score,100)) / 100;
+  fill.style.transition = 'stroke-dashoffset 1.5s cubic-bezier(.4,0,.2,1)';
+  fill.style.strokeDashoffset = arcLen - filled;
+}
+
+// ─── SCORING PAGE ─────────────────────────────────────────────────────────────
+function initScoring() {
+  renderScoreHistogram();
+  renderSegmentCards();
+  renderScoringTable(AppState.applicants);
+}
+
+function runScoring() {
+  const btn = document.getElementById('run-scoring-btn');
+  const section = document.getElementById('scoring-progress-section');
+  const bar = document.getElementById('scoring-progress-bar');
+  const stepsEl = document.getElementById('scoring-steps-text');
+  if (btn) btn.disabled = true;
+  if (section) section.classList.remove('hidden');
+
+  let pct = 0;
+  const steps = ['Деректер оқылуда...', 'Факторлар есептелуде...', 'Нәтижелер дайындалуда...', '✅ Аяқталды!'];
+  const iv = setInterval(() => {
+    pct += rnd(8, 18); if (pct > 100) pct = 100;
+    if (bar) bar.style.width = pct + '%';
+    if (stepsEl) stepsEl.textContent = pct < 35 ? steps[0] : pct < 70 ? steps[1] : pct < 95 ? steps[2] : steps[3];
+    if (pct === 100) {
+      clearInterval(iv);
+      AppState.recalculateScores();
+      renderScoreHistogram(); renderSegmentCards(); renderScoringTable(AppState.applicants);
+      if (btn) btn.disabled = false;
+      setTimeout(() => { if (section) section.classList.add('hidden'); if (bar) bar.style.width='0%'; }, 1200);
+      showToast(`✅ ${formatNumber(AppState.applicants.length)} өтінімдер бағаланды`, 'success');
+    }
+  }, 120);
+}
+
+function renderScoreHistogram() {
+  const ctx = document.getElementById('score-histogram');
+  if (!ctx) return;
+  if (Charts.histogram) Charts.histogram.destroy();
+  const bins = Array(10).fill(0);
+  AppState.applicants.forEach(a => { bins[Math.min(9, Math.floor(a.totalScore/10))]++; });
+  const labels = ['0-9','10-19','20-29','30-39','40-49','50-59','60-69','70-79','80-89','90-100'];
+  const colors = labels.map((_,i) => i<5?'#EF5350':i<7?'#FF9800':'#4CAF50');
+  Charts.histogram = new Chart(ctx, {
+    type:'bar', data:{ labels, datasets:[{label:'Өтінімдер',data:bins,backgroundColor:colors,borderRadius:4}] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.parsed.y} өтінімдер`}} },
+      scales:{ x:{grid:{display:false},ticks:{font:{size:11}}}, y:{beginAtZero:true,ticks:{font:{size:11},stepSize:1}} }
+    }
+  });
+}
+
+function renderSegmentCards() {
+  const tot = AppState.applicants.length || 1;
+  const high = AppState.applicants.filter(a=>a.totalScore>=70).length;
+  const mid  = AppState.applicants.filter(a=>a.totalScore>=50&&a.totalScore<70).length;
+  const low  = AppState.applicants.filter(a=>a.totalScore<50).length;
+  const upd = (id,val,pct) => { const el=document.getElementById(id); if(el){ el.textContent=formatNumber(val); const p=el.nextElementSibling?.nextElementSibling; if(p) p.textContent=Math.round(pct)+'%'; } };
+  const hEl=document.getElementById('seg-high-count'); if(hEl){hEl.textContent=formatNumber(high);}
+  const hP=document.getElementById('seg-high-pct'); if(hP){hP.textContent=Math.round(high/tot*100)+'%';}
+  const mEl=document.getElementById('seg-mid-count'); if(mEl){mEl.textContent=formatNumber(mid);}
+  const mP=document.getElementById('seg-mid-pct'); if(mP){mP.textContent=Math.round(mid/tot*100)+'%';}
+  const lEl=document.getElementById('seg-low-count'); if(lEl){lEl.textContent=formatNumber(low);}
+  const lP=document.getElementById('seg-low-pct'); if(lP){lP.textContent=Math.round(low/tot*100)+'%';}
+}
+
+function filterBySegment(seg, btn) {
+  document.querySelectorAll('.segment-card').forEach(c=>c.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const data = seg==='high' ? AppState.applicants.filter(a=>a.totalScore>=70)
+    : seg==='mid' ? AppState.applicants.filter(a=>a.totalScore>=50&&a.totalScore<70)
+    : AppState.applicants.filter(a=>a.totalScore<50);
+  renderScoringTable(data);
+}
+
+function renderScoringTable(data) {
+  const tbody = document.getElementById('scoring-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = (data||[]).slice(0,100).map((a,i)=>`
+    <tr style="animation-delay:${i*25}ms">
+      <td><span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-size:11px;font-weight:700;background:${a.rank<=3?['#FFD700','#C0C0C0','#CD7F32'][a.rank-1]:'var(--bg)'};color:${a.rank<=3?'#333':'var(--text-muted)'}">${a.rank<=3?['🥇','🥈','🥉'][a.rank-1]:a.rank}</span></td>
+      <td><div style="font-weight:600">${a.name}</div><div style="font-size:11px;color:var(--text-muted)">${a.iin}</div></td>
+      <td style="font-size:13px">${a.region}</td>
+      <td><span class="badge ${getScoreBadgeClass(a.totalScore)} ${a.totalScore>=90?'badge-pulse':''}">${a.totalScore}</span></td>
+      <td>${getRiskDot(a.riskLevel)} ${a.riskLevel}</td>
+      <td><span class="badge ${getStatusBadgeClass(a.recommendation)}">${a.recommendation}</span></td>
+      <td>
+        <div class="row-actions" style="opacity:1">
+          <button class="action-btn" onclick="navigateTo('applicants/${a.id}')"><i class="fas fa-eye"></i></button>
+          <button class="action-btn success" onclick="quickAddShortlist('${a.id}')"><i class="fas fa-star"></i></button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+// ─── SHORTLIST ────────────────────────────────────────────────────────────────
+let dragSrc = null;
+
+function initShortlist() { renderShortlistBudget(); renderShortlistTable(); }
+
+function renderShortlistBudget() {
+  const total = AppState.shortlist.reduce((s,a)=>s+(a.recommendedAmount||0),0);
+  const budget = 6_100_000_000, pct = Math.min(100, Math.round(total/budget*100));
+  const rem = document.getElementById('budget-remaining');
+  const bar = document.getElementById('budget-progress');
+  const lbl = document.getElementById('budget-label');
+  const fc = document.getElementById('shortlist-footer-count');
+  const fa = document.getElementById('shortlist-footer-amount');
+  if(rem) rem.textContent = `Қалған: ${formatMoney(budget-total)}`;
+  if(bar) bar.style.width = pct+'%';
+  if(lbl) lbl.textContent = `${formatMoney(total)} / ${formatMoney(budget)} (${pct}%)`;
+  if(fc) fc.textContent = `${formatNumber(AppState.shortlist.length)} өтінімдер`;
+  if(fa) fa.textContent = formatMoney(total);
+}
+
+function renderShortlistTable() {
+  const tbody = document.getElementById('shortlist-tbody');
+  if (!tbody) return;
+  if (!AppState.shortlist.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state">
+      <div class="empty-icon">📋</div><div class="empty-title">Shortlist бос</div>
+      <div class="empty-subtitle">Өтінімдер бетінен өтінімдерді shortlist-ке қосыңыз</div>
+      <button class="btn btn-primary" onclick="navigateTo('applicants')"><i class="fas fa-list"></i> Өтінімдерге өту</button>
+    </div></td></tr>`; return;
+  }
+  tbody.innerHTML = AppState.shortlist.map((a,i)=>`
+    <tr draggable="true" data-sl-id="${a.id}" ondragstart="onDragStart(event,${i})" ondragover="onDragOver(event)" ondrop="onDrop(event,${i})" ondragend="onDragEnd(event)">
+      <td><span class="drag-handle">⋮⋮</span></td>
+      <td><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--bg);font-size:12px;font-weight:700">${i+1}</span></td>
+      <td><div style="font-weight:600">${a.name}</div><div style="font-size:11px;color:var(--text-muted)">${a.iin}</div></td>
+      <td style="font-size:13px">${a.district}</td>
+      <td><span class="badge ${getScoreBadgeClass(a.totalScore)}">${a.totalScore}</span></td>
+      <td style="font-size:13px">${formatMoney(a.requestedAmount)}</td>
+      <td>
+        <input type="text" class="inline-edit" style="width:120px" value="${formatMoney(a.recommendedAmount)}"
+          onfocus="this.value='${a.recommendedAmount}'"
+          onblur="updateRecAmount('${a.id}',this)">
+      </td>
+      <td><span class="badge badge-success">${a.shortlistStatus||'Ұсынылды'}</span></td>
+      <td><button class="action-btn danger" onclick="removeFromSL('${a.id}')"><i class="fas fa-trash"></i></button></td>
+    </tr>`).join('');
+}
+
+function updateRecAmount(id, input) {
+  const raw = parseFloat(input.value.replace(/[^\d.]/g,''))||0;
+  const item = AppState.shortlist.find(s=>s.id===id);
+  if (item) { item.recommendedAmount = raw > 10000 ? raw : raw * 1_000_000; AppState.save(); }
+  input.value = formatMoney(item.recommendedAmount);
+  renderShortlistBudget();
+}
+
+function removeFromSL(id) {
+  showConfirm('Алып тастау', 'Shortlist-тен алып тастайсыз ба?', () => {
+    AppState.removeFromShortlist(id);
+    renderShortlistTable();
+    renderShortlistBudget();
+    showToast('Shortlist-тен алынды', 'info', 2000);
+  });
+}
+
+function finalApprove() {
+  showConfirm('✅ Финалды бекіту', `${formatNumber(AppState.shortlist.length)} өтінімді бекітуді растайсыз ба?`, () => {
+    showToast('🎉 Shortlist тізімі бекітілді!', 'success', 5000);
+  }, false);
+}
+
+function shortlistAIAnalysis() {
+  const n = AppState.shortlist.length;
+  const avg = n ? Math.round(AppState.shortlist.reduce((s,a)=>s+a.totalScore,0)/n) : 0;
+  const budget = AppState.shortlist.reduce((s,a)=>s+(a.recommendedAmount||0),0);
+  const prompt = `AgriScore KZ жүйесі. ${n} өтінімнен тұратын shortlist. Орташа балл: ${avg}/100. Жалпы сома: ${formatMoney(budget)}. Негізгі аймақтар: ${[...new Set(AppState.shortlist.map(a=>a.region))].slice(0,3).join(', ')}. Тізімнің сапасы туралы қазақша талдау жасаңыз.`;
+  showAIModal('🤖 AI Shortlist Талдауы', prompt, 'analyze');
+}
+
+function exportShortlistExcel() { exportToExcel(AppState.shortlist,'AgriScore_Shortlist'); showToast('Excel файлы жүктелді ✅','success'); }
+
+function showEmailModal() {
+  showModal('<i class="fas fa-envelope"></i> Комиссияға жіберу',
+    `<div class="form-group"><label class="form-label">Кімге</label><input class="form-control" value="commission@agrimin.kz"></div>
+     <div class="form-group"><label class="form-label">Тақырып</label><input class="form-control" value="AgriScore KZ — Shortlist ${new Date().getFullYear()}"></div>
+     <div class="form-group"><label class="form-label">Хабарлама</label><textarea class="form-control" rows="4">Shortlist тізімі қоса беріліп отыр. Жалпы ${AppState.shortlist.length} өтінімдер.</textarea></div>
+     <label class="form-check"><input type="checkbox" checked> <span style="font-size:13px">Shortlist тізімін тіркеу</span></label>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Болдырмау</button>
+     <button class="btn btn-primary" onclick="closeModal();showToast('✉️ Хат жіберілді','success')"><i class="fas fa-paper-plane"></i> Жіберу</button>`);
+}
+
+// Drag & Drop
+function onDragStart(e,i) { dragSrc=i; e.target.closest('tr').classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
+function onDragOver(e) { e.preventDefault(); e.currentTarget.closest('tr')?.classList.add('drag-over'); }
+function onDrop(e,i) { e.preventDefault(); e.currentTarget.closest('tr')?.classList.remove('drag-over'); if(dragSrc===null||dragSrc===i) return; const arr=AppState.shortlist; const [item]=arr.splice(dragSrc,1); arr.splice(i,0,item); AppState.save(); renderShortlistTable(); }
+function onDragEnd(e) { e.target.closest('tr')?.classList.remove('dragging'); document.querySelectorAll('tr.drag-over').forEach(r=>r.classList.remove('drag-over')); dragSrc=null; }
+
+// ─── ANALYTICS ────────────────────────────────────────────────────────────────
+function initAnalytics() {
+  setTimeout(() => { initRegionalChart(); initTypeChart(); initTrendChart(); initScatterChart(); }, 100);
+}
+
+function initRegionalChart() {
+  const ctx = document.getElementById('regional-chart'); if(!ctx) return;
+  if(Charts.regional) Charts.regional.destroy();
+  const data = Object.entries(AppState.getStats().byRegion).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  Charts.regional = new Chart(ctx, { type:'bar',
+    data:{ labels:data.map(d=>d[0].length>12?d[0].slice(0,12)+'...':d[0]), datasets:[{label:'Өтінімдер',data:data.map(d=>d[1]),backgroundColor:'#1B5E20',borderRadius:4}] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true,ticks:{font:{size:11}}},y:{ticks:{font:{size:11}}}} }
+  });
+}
+
+function initTypeChart() {
+  const ctx = document.getElementById('type-chart'); if(!ctx) return;
+  if(Charts.typeChart) Charts.typeChart.destroy();
+  const data = Object.entries(AppState.getStats().byType);
+  Charts.typeChart = new Chart(ctx, { type:'doughnut',
+    data:{ labels:data.map(d=>d[0]), datasets:[{data:data.map(d=>d[1]),backgroundColor:['#1B5E20','#F9A825','#1565C0','#E53935'],borderWidth:2,borderColor:'#fff',hoverOffset:6}] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'60%',
+      plugins:{legend:{position:'bottom',labels:{font:{family:'Inter',size:12},usePointStyle:true}}} }
+  });
+}
+
+function initTrendChart() {
+  const ctx = document.getElementById('trend-chart'); if(!ctx) return;
+  if(Charts.trend) Charts.trend.destroy();
+  const months = TRANSLATIONS[window.currentLang||'kk'].months;
+  Charts.trend = new Chart(ctx, { type:'line',
+    data:{ labels:months, datasets:[
+      {label:'2023',data:months.map(()=>rnd(40,110)),borderColor:'#1B5E20',tension:0.4,fill:false,pointRadius:3},
+      {label:'2024',data:months.map(()=>rnd(60,130)),borderColor:'#F9A825',tension:0.4,fill:false,pointRadius:3},
+      {label:'2025',data:months.map(()=>rnd(80,150)),borderColor:'#1565C0',tension:0.4,fill:false,pointRadius:3},
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{family:'Inter',size:12},usePointStyle:true}}},
+      scales:{x:{ticks:{font:{size:11}}},y:{beginAtZero:true,ticks:{font:{size:11}}}}
+    }
+  });
+}
+
+function initScatterChart() {
+  const ctx = document.getElementById('scatter-chart'); if(!ctx) return;
+  if(Charts.scatter) Charts.scatter.destroy();
+  const mkData = (minScore, maxScore) => AppState.applicants.filter(a=>a.totalScore>=minScore&&a.totalScore<maxScore).map(a=>({x:a.landArea,y:a.productivity}));
+  Charts.scatter = new Chart(ctx, { type:'scatter',
+    data:{ datasets:[
+      {label:'Жоғары (70+)',data:mkData(70,101),backgroundColor:'rgba(27,94,32,0.6)',pointRadius:5},
+      {label:'Орташа (50-69)',data:mkData(50,70),backgroundColor:'rgba(249,168,37,0.6)',pointRadius:5},
+      {label:'Төмен (<50)',data:mkData(0,50),backgroundColor:'rgba(198,40,40,0.6)',pointRadius:5},
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{family:'Inter',size:12},usePointStyle:true}},tooltip:{callbacks:{label:c=>`${c.parsed.x} га, ${c.parsed.y}% өнімділік`}}},
+      scales:{x:{title:{display:true,text:'Алаң (га)',font:{size:11}},ticks:{font:{size:11}}},y:{title:{display:true,text:'Өнімділік (%)',font:{size:11}},ticks:{font:{size:11}}}}
+    }
+  });
+}
+
+function refreshAnalytics() { Object.values(Charts).forEach(c=>{try{c.destroy()}catch{}}); initAnalytics(); showToast('Жаңартылды ✅','success',2000); }
+
+// ─── METHODOLOGY ─────────────────────────────────────────────────────────────
+function initMethodology() {
+  const el = document.getElementById('meth-total-apps');
+  if (el) animateCounter(el, AppState.applicants.length);
+}
+
+// ─── PDF GENERATION ──────────────────────────────────────────────────────────
+function generateShortlistPDF() {
+  if (!AppState.shortlist.length) { showToast('Shortlist бос', 'warning'); return; }
+  const now = new Date();
+  const dateStr = formatDate(now);
+  const stats = AppState.getStats();
+  const total = AppState.shortlist.reduce((s,a)=>s+(a.recommendedAmount||0),0);
+
+  const rows = AppState.shortlist.map((a,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${a.name}</td>
+      <td>${a.iin}</td>
+      <td>${a.region}</td>
+      <td>${a.productionType}</td>
+      <td style="text-align:center;font-weight:700;color:${a.totalScore>=70?'#1B5E20':a.totalScore>=50?'#F57F17':'#C62828'}">${a.totalScore}</td>
+      <td>${formatMoney(a.requestedAmount)}</td>
+      <td style="font-weight:600">${formatMoney(a.recommendedAmount)}</td>
+      <td style="color:${a.totalScore>=70?'#1B5E20':'#F57F17'}">${a.shortlistStatus||'Ұсынылды'}</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>AgriScore KZ — Shortlist ${now.getFullYear()}</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:12px;color:#111;margin:30px}
+    h1{font-size:20px;color:#1B5E20;margin-bottom:4px}
+    .subtitle{color:#666;font-size:12px;margin-bottom:20px}
+    .meta{display:flex;gap:40px;margin-bottom:24px;padding:12px;background:#F4F6F4;border-radius:8px}
+    .meta-item{text-align:center}
+    .meta-num{font-size:22px;font-weight:800;color:#1B5E20}
+    .meta-lbl{font-size:10px;color:#666;margin-top:2px}
+    table{width:100%;border-collapse:collapse;font-size:11px}
+    th{background:#1B5E20;color:#fff;padding:8px 6px;text-align:left}
+    td{padding:7px 6px;border-bottom:1px solid #e0e0e0}
+    tr:nth-child(even){background:#f9f9f9}
+    .footer{margin-top:24px;padding-top:12px;border-top:1px solid #ccc;font-size:10px;color:#888;display:flex;justify-content:space-between}
+    @media print{body{margin:15px}}
+  </style></head><body>
+  <h1>🌾 AgriScore KZ — Shortlist тізімі</h1>
+  <div class="subtitle">ҚР Ауыл шаруашылығы министрлігі · ${now.getFullYear()} жылғы субсидия науқаны · Жасалды: ${dateStr}</div>
+  <div class="meta">
+    <div class="meta-item"><div class="meta-num">${AppState.shortlist.length}</div><div class="meta-lbl">Өтінімдер</div></div>
+    <div class="meta-item"><div class="meta-num">${formatMoney(total)}</div><div class="meta-lbl">Ұсынылған сома</div></div>
+    <div class="meta-item"><div class="meta-num">${Math.round(AppState.shortlist.reduce((s,a)=>s+a.totalScore,0)/AppState.shortlist.length)}</div><div class="meta-lbl">Орташа балл</div></div>
+    <div class="meta-item"><div class="meta-num">${AppState.shortlist.filter(a=>a.totalScore>=70).length}</div><div class="meta-lbl">Жоғары балл (70+)</div></div>
+  </div>
+  <table>
+    <thead><tr><th>#</th><th>Аты-жөні</th><th>ЖСН</th><th>Облыс</th><th>Өндіріс</th><th>Балл</th><th>Сұралған ₸</th><th>Ұсынылған ₸</th><th>Мәртебе</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">
+    <span>AgriScore KZ скоринг жүйесі — автоматты есеп</span>
+    <span>Комиссия күні: 15.09.${now.getFullYear()}</span>
+  </div>
+  <script>window.onload=()=>{window.print()}<\/script>
+  </body></html>`;
+
+  const w = window.open('','_blank','width=1000,height=700');
+  if (w) { w.document.write(html); w.document.close(); }
+  else showToast('Popup блокталған — браузер рұқсатын беріңіз', 'warning');
+}
+
+function generateMethodologyPDF() {
+  const weights = loadWeights();
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>AgriScore KZ — Методология</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:12px;color:#111;margin:30px}
+    h1{font-size:22px;color:#1B5E20;margin-bottom:4px}
+    h2{font-size:15px;color:#1B5E20;margin:20px 0 8px;border-bottom:2px solid #1B5E20;padding-bottom:4px}
+    .subtitle{color:#666;font-size:12px;margin-bottom:20px}
+    .factor{margin-bottom:12px;padding:12px;border-left:4px solid #1B5E20;background:#f9f9f9;border-radius:0 8px 8px 0}
+    .factor-title{font-weight:700;font-size:13px;margin-bottom:4px}
+    .weight-badge{display:inline-block;background:#1B5E20;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;margin-left:8px}
+    .formula{background:#f0f0f0;padding:12px;border-radius:6px;font-family:monospace;font-size:12px;margin:12px 0}
+    table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}
+    th{background:#1B5E20;color:#fff;padding:7px 10px;text-align:left}
+    td{padding:7px 10px;border-bottom:1px solid #ddd}
+    tr:nth-child(even){background:#f9f9f9}
+    .footer{margin-top:24px;padding-top:12px;border-top:1px solid #ccc;font-size:10px;color:#888;display:flex;justify-content:space-between}
+    @media print{body{margin:15px}}
+  </style></head><body>
+  <h1>📖 AgriScore KZ — Скоринг методологиясы</h1>
+  <div class="subtitle">ҚР Ауыл шаруашылығы министрлігі · Merit-based субсидия бөлу жүйесі · ${formatDate(new Date())}</div>
+
+  <h2>1. Жүйенің мақсаты</h2>
+  <p>AgriScore KZ — ауылшаруашылығы субсидияларын "бірінші берген — бірінші алады" принципінен деректерге негізделген объективті рейтингке көшіру жүйесі. Финалды шешім комиссия арқылы қабылданады.</p>
+
+  <h2>2. Скоринг факторлары</h2>
+  <div class="factor"><div class="factor-title">Субсидия тарихы <span class="weight-badge">${Math.round(weights.subsidyHistory*100)}%</span></div>Алдыңғы субсидияны игеру тарихы, есептерді уақытылы тапсыру, бұзушылықтардың болмауы. Максимум: 30 балл.</div>
+  <div class="factor"><div class="factor-title">Өнімділік <span class="weight-badge">${Math.round(weights.productivity*100)}%</span></div>Аймақтық орташадан жоғары өнімділік, өсу тренді, шығын тиімділігі. Максимум: 30 балл.</div>
+  <div class="factor"><div class="factor-title">Шаруашылық профилі <span class="weight-badge">${Math.round(weights.farmProfile*100)}%</span></div>Жер алаңы (50–1000 га оңтайлы), техника саны (>5), суландыру жүйесі. Максимум: 20 балл.</div>
+  <div class="factor"><div class="factor-title">Әлеуметтік-экономикалық <span class="weight-badge">${Math.round(weights.socialEconomic*100)}%</span></div>Жұмыс орындары (>10 қызметкер), ауылдық аймақ, аз қамтылған аймақ. Максимум: 15 балл.</div>
+  <div class="factor"><div class="factor-title">Тәуекел бағасы <span class="weight-badge">${Math.round(weights.riskAssessment*100)}%</span></div>Несие тарихы, салық берешегі жоқ, сот даулары жоқ. Максимум: 10 балл.</div>
+
+  <h2>3. Скоринг формуласы</h2>
+  <div class="formula">Score = (F1/30×25×${weights.subsidyHistory}) + (F2/30×30×${weights.productivity}) + (F3/20×20×${weights.farmProfile}) + (F4/15×15×${weights.socialEconomic}) + (F5/10×10×${weights.riskAssessment})</div>
+
+  <h2>4. Шешім қабылдау матрицасы</h2>
+  <table>
+    <thead><tr><th>Балл диапазоны</th><th>Мәртебе</th><th>Тәуекел деңгейі</th><th>Ұсыным</th></tr></thead>
+    <tbody>
+      <tr><td>70–100</td><td>✅ Ұсынылды</td><td>🟢 Төмен</td><td>Shortlist-ке қосу</td></tr>
+      <tr><td>50–69</td><td>⚠️ Тексеруде</td><td>🟡 Орташа</td><td>Комиссия қарауы</td></tr>
+      <tr><td>0–49</td><td>❌ Ұсынылмайды</td><td>🔴 Жоғары</td><td>Бас тарту</td></tr>
+    </tbody>
+  </table>
+
+  <h2>5. Деректер өңдеу</h2>
+  <p>Excel/CSV форматындағы деректер жүктеледі → бағандар автоматты анықталады → скоринг алгоритмі есептейді → AI (Gemini 2.5 Flash) əр өтінімге түсіндірме береді → shortlist қалыптасады → комиссияға PDF есеп жіберіледі.</p>
+
+  <div class="footer">
+    <span>AgriScore KZ — ҚР АШМ скоринг жүйесі</span>
+    <span>Жасалды: ${formatDate(new Date())}</span>
+  </div>
+  <script>window.onload=()=>{window.print()}<\/script>
+  </body></html>`;
+
+  const w = window.open('','_blank','width=900,height=700');
+  if (w) { w.document.write(html); w.document.close(); }
+  else showToast('Popup блокталған — браузер рұқсатын беріңіз', 'warning');
+}
+
+// ─── UPLOAD ───────────────────────────────────────────────────────────────────
+function initUpload() {
+  const zone = document.getElementById('upload-zone');
+  const fi = document.getElementById('file-input');
+  if (!zone || !fi) return;
+  zone.onclick = () => fi.click();
+  zone.ondragover = e => { e.preventDefault(); zone.classList.add('drag-active'); };
+  zone.ondragleave = () => zone.classList.remove('drag-active');
+  zone.ondrop = e => { e.preventDefault(); zone.classList.remove('drag-active'); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); };
+  fi.onchange = e => { if(e.target.files[0]) handleFile(e.target.files[0]); };
+  renderUploadHistory();
+}
+
+function handleFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  document.getElementById('upload-file-info')?.classList.remove('hidden');
+  const fn = document.getElementById('upload-file-name'); if(fn) fn.textContent = file.name;
+  const fs = document.getElementById('upload-file-size'); if(fs) fs.textContent = (file.size/1024).toFixed(1)+' KB';
+
+  const onOk = (apps, colMap, headers) => {
+    window._uploadHeaders = headers;
+    window._pendingColMap = { ...colMap };
+    window._pendingRawRows = apps;
+    const fr = document.getElementById('upload-file-rows'); if(fr) fr.textContent = formatNumber(apps.length);
+    renderColMapping(colMap);
+    document.getElementById('column-mapping-card')?.classList.remove('hidden');
+    document.getElementById('upload-confirm-section')?.classList.remove('hidden');
+    window._pendingImport = apps;
+  };
+  const onErr = msg => showToast('❌ '+msg, 'error');
+  if (ext === 'xlsx' || ext === 'xls') parseExcelFile(file, onOk, onErr);
+  else if (ext === 'csv') parseCSVFile(file, onOk, onErr);
+  else showToast('Тек .xlsx, .xls, .csv форматы қолдаулы', 'warning');
+}
+
+function renderColMapping(colMap) {
+  const tbody = document.getElementById('column-mapping-tbody'); if(!tbody) return;
+  const headers = window._uploadHeaders || [];
+  const sys = {
+    iin:'ЖСН/БИН', name:'Атауы', region:'Облыс', district:'Аудан',
+    subsidyType:'Субсидия түрі', requestedAmount:'Сомасы', landArea:'Алаңы (га)',
+    productionType:'Өндіріс түрі', productivity:'Өнімділік (%)', employees:'Қызметкерлер'
+  };
+  const opts = ['<option value="">— таңдалмаған —</option>',
+    ...headers.map((h,i) => `<option value="${i}">${h}</option>`)
+  ].join('');
+
+  tbody.innerHTML = Object.entries(sys).map(([k,label]) => {
+    const m = colMap[k];
+    const conf = m ? m.confidence : 0;
+    const selVal = m ? m.index : '';
+    const confBadge = m
+      ? `<span style="font-size:11px;font-weight:600;color:${conf>=80?'var(--success)':conf>=60?'var(--warning)':'var(--danger)'}">${conf}%</span>`
+      : '<span style="font-size:11px;color:var(--text-muted)">—</span>';
+    return `<tr>
+      <td style="padding:6px 8px;font-weight:500;font-size:12px">${label}</td>
+      <td style="padding:4px 8px">
+        <select class="form-control" style="font-size:11px;padding:4px 6px" data-field="${k}"
+          onchange="updateColMapping('${k}',this.value)">
+          ${opts.replace(`value="${selVal}"`,`value="${selVal}" selected`)}
+        </select>
+      </td>
+      <td style="padding:6px 8px">${confBadge}</td>
+    </tr>`;
+  }).join('');
+}
+
+function updateColMapping(field, idx) {
+  if (!window._pendingColMap) window._pendingColMap = {};
+  const headers = window._uploadHeaders || [];
+  if (idx === '') { delete window._pendingColMap[field]; }
+  else { window._pendingColMap[field] = { index: parseInt(idx), header: headers[parseInt(idx)], confidence: 100 }; }
+}
+
+function confirmUpload() {
+  if (!window._pendingImport) return;
+  showLoading('Деректер жүктелуде...');
+  setTimeout(() => {
+    AppState.applicants = window._pendingImport;
+    AppState.applicants.sort((a,b)=>b.totalScore-a.totalScore);
+    AppState.applicants.forEach((a,i)=>a.rank=i+1);
+    AppState.uploadHistory.unshift({ id:Date.now(), name:document.getElementById('upload-file-name')?.textContent||'файл', size:document.getElementById('upload-file-size')?.textContent||'', rows:window._pendingImport.length, date:formatDate(new Date()) });
+    AppState.save();
+    window._pendingImport = null;
+    hideLoading();
+    showToast(`✅ ${formatNumber(AppState.applicants.length)} жазба жүктелді`, 'success');
+    renderUploadHistory();
+    document.getElementById('upload-confirm-section')?.classList.add('hidden');
+    document.getElementById('column-mapping-card')?.classList.add('hidden');
+    document.getElementById('upload-file-info')?.classList.add('hidden');
+    document.getElementById('file-input').value = '';
+  }, 1200);
+}
+
+function loadDemoData() {
+  showLoading('Demo деректер жүктелуде...');
+  setTimeout(() => {
+    AppState.applicants = generateSampleApplicants(50);
+    AppState.save();
+    AppState.uploadHistory.unshift({ id:Date.now(), name:'demo_data.xlsx', size:'18 KB', rows:50, date:formatDate(new Date()) });
+    AppState.save();
+    hideLoading();
+    showToast('✅ 50 demo жазба жүктелді', 'success');
+    renderUploadHistory();
+  }, 1000);
+}
+
+function renderUploadHistory() {
+  const el = document.getElementById('upload-history-list'); if(!el) return;
+  if (!AppState.uploadHistory.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">Жүктеу тарихы жоқ</div>'; return; }
+  el.innerHTML = AppState.uploadHistory.slice(0,8).map(h=>`
+    <div class="upload-history-item">
+      <i class="fas fa-file-excel" style="color:var(--success);font-size:20px"></i>
+      <div class="upload-history-info">
+        <div class="upload-history-name">${h.name}</div>
+        <div class="upload-history-meta">${h.date} · ${formatNumber(h.rows)} жазба · ${h.size}</div>
+      </div>
+      <button class="action-btn danger" onclick="removeUploadHist(${h.id})"><i class="fas fa-trash"></i></button>
+    </div>`).join('');
+}
+
+function removeUploadHist(id) { AppState.uploadHistory = AppState.uploadHistory.filter(h=>h.id!==id); AppState.save(); renderUploadHistory(); }
+
+// ─── SETTINGS ────────────────────────────────────────────────────────────────
+function initSettings() {
+  // Tabs
+  document.querySelectorAll('#page-settings .tab-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('#page-settings .tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('#page-settings .tab-content').forEach(c=>c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab)?.classList.add('active');
+    };
+  });
+
+  // API key status (server-side)
+  fetch('/api/gemini-status').then(r=>r.json()).then(s => {
+    const status = document.getElementById('api-key-status');
+    if (status) status.innerHTML = s.hasKey
+      ? '<span style="color:var(--success);font-size:12px">✅ .env → GEMINI_API_KEY орнатылды</span>'
+      : '<span style="color:var(--text-muted);font-size:12px">⚠️ Demo режим — .env файлына GEMINI_API_KEY қосыңыз</span>';
+    const keyEl = document.getElementById('gemini-api-key');
+    if (keyEl) { keyEl.value = s.hasKey ? '••••••••••••••••••••••••••••••••••••••••' : ''; keyEl.disabled = true; keyEl.placeholder = s.hasKey ? 'Кілт .env файлында орнатылған' : 'GEMINI_API_KEY .env файлына қосыңыз'; }
+  }).catch(()=>{});
+
+  // Weights sliders
+  const container = document.getElementById('weight-sliders');
+  if (container) {
+    const weights = loadWeights();
+    const wDefs = [
+      {key:'subsidyHistory',label:'Субсидия тарихы',color:'#1B5E20'},
+      {key:'productivity',label:'Өнімділік',color:'#2E7D32'},
+      {key:'farmProfile',label:'Шаруашылық профилі',color:'#388E3C'},
+      {key:'socialEconomic',label:'Әлеуметтік-экономикалық',color:'#F9A825'},
+      {key:'riskAssessment',label:'Тәуекел бағасы',color:'#1565C0'},
+    ];
+    container.innerHTML = wDefs.map(w => `
+      <div class="weight-item">
+        <div class="weight-label">
+          <span>${w.label}</span>
+          <span class="weight-val" id="wv-${w.key}">${Math.round(weights[w.key]*100)}%</span>
+        </div>
+        <input type="range" class="form-range" id="ws-${w.key}" min="0" max="100" value="${Math.round(weights[w.key]*100)}"
+          oninput="document.getElementById('wv-${w.key}').textContent=this.value+'%'; updateWeightTotal()">
+      </div>`).join('');
+    updateWeightTotal();
+  }
+
+  // Threshold
+  const th = document.getElementById('scoring-threshold');
+  const thv = document.getElementById('threshold-val');
+  if (th) { th.value = AppState.shortlistThreshold; if(thv) thv.textContent = AppState.shortlistThreshold; }
+
+  // Theme
+  const isDark = document.body.classList.contains('dark-mode');
+  document.getElementById('theme-light')?.classList.toggle('active', !isDark);
+  document.getElementById('theme-dark')?.classList.toggle('active', isDark);
+
+  // Users table
+  const ubody = document.getElementById('users-tbody');
+  if (ubody) ubody.innerHTML = [
+    {name:'Ахметов А.',role:'Администратор',last:'28.03.2025 09:15'},
+    {name:'Сейітова Г.',role:'Сарапшы',last:'27.03.2025 14:30'},
+    {name:'Нұрланов М.',role:'Сарапшы',last:'26.03.2025 11:00'},
+  ].map(u=>`<tr><td style="padding:12px 14px;font-weight:600">${u.name}</td><td style="padding:12px 14px"><span class="badge badge-info">${u.role}</span></td><td style="padding:12px 14px;font-size:12px;color:var(--text-muted)">${u.last}</td><td style="padding:12px 14px"><div class="row-actions" style="opacity:1"><button class="action-btn"><i class="fas fa-edit"></i></button><button class="action-btn danger"><i class="fas fa-trash"></i></button></div></td></tr>`).join('');
+}
+
+function updateWeightTotal() {
+  const keys = ['subsidyHistory','productivity','farmProfile','socialEconomic','riskAssessment'];
+  const total = keys.reduce((s,k) => { const el=document.getElementById(`ws-${k}`); return s+(el?parseInt(el.value):0); }, 0);
+  const tw = document.getElementById('weight-total'); if(tw) tw.textContent = total+'%';
+  const wrap = document.getElementById('weight-total-wrap'); if(wrap) wrap.classList.toggle('error', total!==100);
+}
+
+function saveAndRecalculate() {
+  const keys = ['subsidyHistory','productivity','farmProfile','socialEconomic','riskAssessment'];
+  let total = 0;
+  const weights = {};
+  keys.forEach(k => { const v=parseInt(document.getElementById(`ws-${k}`)?.value||0); weights[k]=v/100; total+=v; });
+  if (total !== 100) { showToast('⚠️ Үлестер жиыны 100% болуы керек!', 'warning'); return; }
+  localStorage.setItem('agri_weights', JSON.stringify(weights));
+  const th = parseInt(document.getElementById('scoring-threshold')?.value||65);
+  localStorage.setItem('agri_threshold', th);
+  AppState.scoringWeights = weights; AppState.shortlistThreshold = th;
+  showLoading('Қайта есептелуде...');
+  setTimeout(() => { AppState.recalculateScores(); hideLoading(); showToast(`✅ Сақталды. ${formatNumber(AppState.applicants.length)} өтінімдер қайта бағаланды`, 'success'); }, 800);
+}
+
+function saveAPIKey() {
+  // API кілті .env файлында сақталады, frontend-те емес
+  showModal(
+    '<i class="fas fa-info-circle" style="color:var(--info)"></i> API кілтін қалай орнату',
+    `<div style="font-size:13px;line-height:1.8">
+      <p>API кілті қауіпсіздік үшін серверде (.env файлында) сақталады.</p>
+      <br>
+      <p><b>1.</b> <code style="background:var(--bg);padding:2px 6px;border-radius:4px">c:/AgriScoreKZ/.env</code> файлын ашыңыз</p>
+      <p><b>2.</b> <code style="background:var(--bg);padding:2px 6px;border-radius:4px">GEMINI_API_KEY=</code> жолына кілтіңізді қосыңыз</p>
+      <p><b>3.</b> Серверді қайта іске қосыңыз: <code style="background:var(--bg);padding:2px 6px;border-radius:4px">node server.js</code></p>
+      <br>
+      <p style="color:var(--text-muted);font-size:12px">🔑 Кілтті <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> сайтынан алыңыз</p>
+    </div>`,
+    '<button class="btn btn-primary" onclick="closeModal()">Түсінікті</button>', 'modal-sm'
+  );
+}
+
+function testAPIKey() {
+  const btn = document.getElementById('test-api-btn');
+  if (btn) { btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Тексерілуде...'; }
+  fetch('/api/gemini-status')
+    .then(r => r.json())
+    .then(s => {
+      const status = document.getElementById('api-key-status');
+      if (s.hasKey) {
+        showToast('✅ Gemini API кілті орнатылған', 'success');
+        if (status) status.innerHTML = '<span style="color:var(--success);font-size:12px">✅ .env → GEMINI_API_KEY орнатылды</span>';
+        // Actually test with a real call
+        return callGemini('Test', 'score').then(() => {
+          showToast('✅ Gemini байланысы жұмыс жасайды!', 'success');
+        });
+      } else {
+        showToast('⚠️ GEMINI_API_KEY орнатылмаған — demo режим', 'warning');
+        if (status) status.innerHTML = '<span style="color:var(--text-muted);font-size:12px">⚠️ Demo режим — .env файлына кілт қосыңыз</span>';
+      }
+    })
+    .catch(err => showToast('❌ '+err.message, 'error'))
+    .finally(() => { if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wifi"></i> Тексеру';} });
+}
+
+function toggleAPIKeyVisibility() {
+  const inp = document.getElementById('gemini-api-key');
+  const icon = document.getElementById('api-key-eye');
+  if (!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  if (icon) icon.className = inp.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+}
+
+function setTheme(theme) {
+  document.body.classList.toggle('dark-mode', theme==='dark');
+  localStorage.setItem('agri_theme', theme);
+  document.getElementById('theme-light')?.classList.toggle('active', theme==='light');
+  document.getElementById('theme-dark')?.classList.toggle('active', theme==='dark');
+}
+
+function clearAllData() {
+  showConfirm('Деректерді тазарту', 'Барлық деректер жойылады! Бұл әрекетті қайтару мүмкін емес.', () => {
+    AppState.clearAll(); showToast('✅ Деректер тазартылды', 'success');
+  });
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
+
+function formatDate(d) {
+  if (!d) return '—';
+  if (typeof d === 'string') return d;
+  return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+function initApp() {
+  // Load data
+  AppState.load();
+
+  // Theme
+  if (localStorage.getItem('agri_theme') === 'dark') document.body.classList.add('dark-mode');
+
+  // Sidebar
+  if (localStorage.getItem('agri_sidebar') === '1') document.getElementById('app-shell')?.classList.add('sidebar-collapsed');
+
+  // Language
+  window.currentLang = localStorage.getItem('agri_lang') || 'kk';
+  setLanguage(window.currentLang);
+
+  // Lang buttons
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.onclick = () => { setLanguage(btn.dataset.lang); };
+  });
+
+  // Nav items
+  document.querySelectorAll('.nav-item[data-page], .bottom-nav-item[data-page]').forEach(el => {
+    el.onclick = () => navigateTo(el.dataset.page);
+  });
+
+  // Hamburger
+  document.getElementById('hamburger-btn')?.addEventListener('click', toggleSidebar);
+
+  // Dropdowns
+  document.getElementById('notif-btn')?.addEventListener('click', e => { e.stopPropagation(); document.getElementById('notif-wrap')?.classList.toggle('open'); document.getElementById('avatar-wrap')?.classList.remove('open'); });
+  document.getElementById('navbar-avatar')?.addEventListener('click', e => { e.stopPropagation(); document.getElementById('avatar-wrap')?.classList.toggle('open'); document.getElementById('notif-wrap')?.classList.remove('open'); });
+  document.addEventListener('click', () => { document.querySelectorAll('.dropdown.open').forEach(d=>d.classList.remove('open')); });
+
+  // Search bar
+  document.getElementById('search-btn')?.addEventListener('click', () => { document.getElementById('search-bar')?.classList.toggle('open'); document.getElementById('global-search-input')?.focus(); });
+  document.getElementById('global-search-input')?.addEventListener('input', debounce(e => {
+    if (location.hash.includes('applicants')) {
+      const el = document.getElementById('app-search'); if(el){el.value=e.target.value;filterApplicants();}
+    }
+  }, 300));
+
+  // Escape closes modal
+  document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal(); });
+
+  // Login init
+  initLoginPage();
+
+  // Router
+  window.addEventListener('hashchange', router);
+  router();
+}
+
+document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', initApp) : initApp();
