@@ -227,6 +227,7 @@ const AppState = {
   applicants: [],
   shortlist: [],
   comments: {},
+  commissionReviews: {},
   uploadHistory: [],
   scoringWeights: DEFAULT_WEIGHTS,
   shortlistThreshold: 65,
@@ -242,6 +243,9 @@ const AppState = {
 
       const cm = localStorage.getItem('agri_comments');
       this.comments = cm ? JSON.parse(cm) : {};
+
+      const cr = localStorage.getItem('agri_commission');
+      this.commissionReviews = cr ? JSON.parse(cr) : {};
 
       const uh = localStorage.getItem('agri_upload_history');
       this.uploadHistory = uh ? JSON.parse(uh) : [];
@@ -265,7 +269,25 @@ const AppState = {
     localStorage.setItem('agri_applicants', JSON.stringify(this.applicants));
     localStorage.setItem('agri_shortlist', JSON.stringify(this.shortlist));
     localStorage.setItem('agri_comments', JSON.stringify(this.comments));
+    localStorage.setItem('agri_commission', JSON.stringify(this.commissionReviews));
     localStorage.setItem('agri_upload_history', JSON.stringify(this.uploadHistory));
+  },
+
+  updateCommissionReview(id, status, comment, overrideReason) {
+    const user = JSON.parse(localStorage.getItem('agri_user') || '{}');
+    this.commissionReviews[id] = {
+      status,           // 'approved' | 'hold' | 'rejected' | 'override' | 'pending'
+      comment: comment || '',
+      overrideReason: overrideReason || '',
+      reviewedBy: user.name || user.login || 'Пайдаланушы',
+      reviewedAt: formatDate(new Date()),
+      time: new Date().toLocaleTimeString('kk-KZ', { hour:'2-digit', minute:'2-digit' })
+    };
+    this.save();
+  },
+
+  getCommissionReview(id) {
+    return this.commissionReviews[id] || { status: 'pending' };
   },
 
   recalculateScores() {
@@ -509,6 +531,130 @@ function exportToExcel(data, filename) {
   ];
 
   XLSX.writeFile(wb, filename + '.xlsx');
+}
+
+// ─── ANOMALY DETECTION ──────────────────────────────────────────────────────
+function detectAnomalies(applicant) {
+  const all = AppState.applicants;
+  const flags = [];
+
+  // 1. Productivity vs score mismatch
+  if ((applicant.productivity||0) > 80 && (applicant.totalScore||0) < 45) {
+    flags.push({ type:'warning', code:'PROD_SCORE_MISMATCH', text:'Өнімділік жоғары бірақ жалпы балл төмен — деректер сәйкессіздігі' });
+  }
+
+  // 2. Productivity outlier (top 5% vs mean)
+  if (all.length > 5) {
+    const avg = all.reduce((s,a) => s + (a.productivity||0), 0) / all.length;
+    if ((applicant.productivity||0) > avg * 1.9) {
+      flags.push({ type:'warning', code:'HIGH_PROD_OUTLIER', text:`Өнімділік аймақтық орташадан 90%+ жоғары (${applicant.productivity}% vs ${Math.round(avg)}%) — тексеру ұсынылады` });
+    }
+  }
+
+  // 3. Missing critical fields
+  const critical = [['iin','ЖСН'],['name','Атауы'],['region','Облыс'],['landArea','Жер алаңы'],['productionType','Өндіріс түрі']];
+  const missing = critical.filter(([k]) => !applicant[k]);
+  if (missing.length > 0) {
+    flags.push({ type:'error', code:'MISSING_FIELDS', text:`Міндетті өрістер жоқ: ${missing.map(m=>m[1]).join(', ')}` });
+  }
+
+  // 4. Subsidy used but reports late
+  if (applicant.hasPreviousSubsidy && applicant.usedFullSubsidy && !applicant.reportsOnTime) {
+    flags.push({ type:'warning', code:'REPORT_INCONSISTENCY', text:'Субсидия игерілді бірақ есептер уақытылы тапсырылмаған — сәйкессіздік' });
+  }
+
+  // 5. Large land, minimal equipment
+  if ((applicant.landArea||0) > 600 && (applicant.equipmentCount||0) < 2) {
+    flags.push({ type:'warning', code:'LAND_EQUIP_MISMATCH', text:`Үлкен жер алаңы (${applicant.landArea} га) бірақ техника өте аз (${applicant.equipmentCount||0} бірлік)` });
+  }
+
+  // 6. Amount vs land ratio
+  if ((applicant.requestedAmount||0) > 12_000_000 && (applicant.landArea||0) < 30) {
+    flags.push({ type:'error', code:'AMOUNT_LAND_RATIO', text:`Сұралған сома (${formatMoney(applicant.requestedAmount)}) жер алаңына сай емес (${applicant.landArea} га)` });
+  }
+
+  // 7. Revenue vs request ratio
+  if ((applicant.annualRevenue||0) < 500_000 && (applicant.requestedAmount||0) > 5_000_000) {
+    flags.push({ type:'warning', code:'REVENUE_REQUEST_MISMATCH', text:`Жылдық айналым (${formatMoney(applicant.annualRevenue)}) сұралған сомадан күрт төмен` });
+  }
+
+  // 8. Near-duplicate IIN (first 8 digits match another applicant)
+  const dups = all.filter(a => a.id !== applicant.id && a.iin && applicant.iin && a.iin.slice(0,9) === applicant.iin.slice(0,9));
+  if (dups.length > 0) {
+    flags.push({ type:'error', code:'POSSIBLE_DUPLICATE', text:`Ұқсас ЖСН анықталды: ${dups[0].name} (${dups[0].iin}) — мүмкін дубликат` });
+  }
+
+  // 9. Sudden jump in subsidy utilization
+  const hist = applicant.subsidyHistory || [];
+  if (hist.length >= 2) {
+    const sorted = [...hist].sort((a,b) => a.year - b.year);
+    const lastTwo = sorted.slice(-2);
+    if (lastTwo[0].utilization < 50 && lastTwo[1].utilization > 95) {
+      flags.push({ type:'warning', code:'UTILIZATION_JUMP', text:`Субсидия игерілуі күрт өскен: ${lastTwo[0].utilization}% → ${lastTwo[1].utilization}% — тексеру қажет` });
+    }
+  }
+
+  const errCnt = flags.filter(f => f.type === 'error').length;
+  const warnCnt = flags.filter(f => f.type === 'warning').length;
+  const anomalyRisk = errCnt > 0 ? 'Жоғары' : warnCnt >= 2 ? 'Орташа' : warnCnt === 1 ? 'Төмен' : 'Жоқ';
+
+  return { flags, anomalyRisk, errCnt, warnCnt };
+}
+
+// ─── DATA QUALITY ────────────────────────────────────────────────────────────
+function calcDataQuality(applicant) {
+  const fields = [
+    { key:'iin',             label:'ЖСН',              required:true },
+    { key:'name',            label:'Атауы',             required:true },
+    { key:'region',          label:'Облыс',             required:true },
+    { key:'district',        label:'Аудан',             required:true },
+    { key:'landArea',        label:'Жер алаңы',         required:true },
+    { key:'productionType',  label:'Өндіріс түрі',      required:true },
+    { key:'subsidyType',     label:'Субсидия түрі',     required:true },
+    { key:'requestedAmount', label:'Сұралған сома',     required:true },
+    { key:'applicationDate', label:'Өтінім күні',       required:true },
+    { key:'employees',       label:'Қызметкерлер',      required:false },
+    { key:'equipmentCount',  label:'Техника саны',      required:false },
+    { key:'annualRevenue',   label:'Жылдық айналым',    required:false },
+    { key:'netProfit',       label:'Таза пайда',        required:false },
+    { key:'productivity',    label:'Өнімділік %',       required:false },
+    { key:'hasPreviousSubsidy', label:'Субсидия тарихы', required:false },
+  ];
+
+  const results = fields.map(f => {
+    const val = applicant[f.key];
+    const present = val !== null && val !== undefined && val !== '' && !(typeof val === 'number' && isNaN(val));
+    return { ...f, present, value: val };
+  });
+
+  const filled = results.filter(r => r.present).length;
+  const missingRequired = results.filter(r => r.required && !r.present);
+  const completeness = Math.round(filled / results.length * 100);
+  const quality = completeness >= 90 ? 'Жоғары' : completeness >= 70 ? 'Орташа' : 'Төмен';
+  const reliable = missingRequired.length === 0;
+
+  return { fields: results, filled, total: results.length, missingRequired, completeness, quality, reliable };
+}
+
+// ─── WHAT-IF SIMULATION ──────────────────────────────────────────────────────
+function calcWhatIf(applicant, changes) {
+  const modified = { ...applicant, ...changes };
+  const result = calculateScore(modified);
+  const threshold = parseInt(localStorage.getItem('agri_threshold') || '65');
+  const wasIn = (applicant.totalScore || 0) >= threshold;
+  const nowIn = result.totalScore >= threshold;
+  let shortlistChange = 'same';
+  if (!wasIn && nowIn) shortlistChange = 'enters';
+  if (wasIn && !nowIn) shortlistChange = 'exits';
+  return {
+    originalScore: applicant.totalScore || 0,
+    newScore: result.totalScore,
+    diff: result.totalScore - (applicant.totalScore || 0),
+    factors: result.factors,
+    recommendation: result.recommendation,
+    wouldEnterShortlist: nowIn,
+    shortlistChange,
+  };
 }
 
 // ─── FORMAT HELPERS ─────────────────────────────────────────────────────────

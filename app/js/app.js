@@ -658,6 +658,22 @@ function initApplicantDetail(id) {
   document.getElementById('detail-date').textContent = `📅 ${a.applicationDate}`;
   document.getElementById('detail-rank').textContent = `Рейтинг: #${a.rank} / ${AppState.applicants.length}`;
 
+  // Quality + Anomaly badges in hero
+  const dq = calcDataQuality(a);
+  const an = detectAnomalies(a);
+  const qaBadges = document.getElementById('detail-qa-badges');
+  if (qaBadges) {
+    const qColor = dq.completeness>=90?'var(--success)':dq.completeness>=70?'var(--warning)':'var(--danger)';
+    const anColor = an.anomalyRisk==='Жоқ'?'var(--success)':an.anomalyRisk==='Төмен'?'var(--success)':an.anomalyRisk==='Орташа'?'var(--warning)':'var(--danger)';
+    qaBadges.innerHTML = `
+      <span class="quality-pill" style="border-color:${qColor};color:${qColor}" title="Деректер толықтығы">
+        <i class="fas fa-database"></i> ${dq.completeness}% толық
+      </span>
+      <span class="quality-pill" style="border-color:${anColor};color:${anColor}" title="Аномалия тәуекелі">
+        <i class="fas fa-shield-alt"></i> ${an.anomalyRisk==='Жоқ'?'Норма':an.anomalyRisk+' тәуекел'}
+      </span>`;
+  }
+
   // Gauge
   const gc = document.getElementById('detail-gauge-container');
   if (gc) {
@@ -705,11 +721,14 @@ function initApplicantDetail(id) {
 }
 
 function renderDetailTab(tab, a) {
-  if (tab === 'tab-scoring') renderScoringTab(a);
-  else if (tab === 'tab-data') renderDataTab(a);
-  else if (tab === 'tab-history') renderHistoryTab(a);
-  else if (tab === 'tab-docs') renderDocsTab(a);
-  else if (tab === 'tab-comments') renderCommentsTab(a);
+  if (tab === 'tab-scoring')    renderScoringTab(a);
+  else if (tab === 'tab-risk')       renderRiskTab(a);
+  else if (tab === 'tab-whatif')     renderWhatIfTab(a);
+  else if (tab === 'tab-data')       renderDataTab(a);
+  else if (tab === 'tab-history')    renderHistoryTab(a);
+  else if (tab === 'tab-docs')       renderDocsTab(a);
+  else if (tab === 'tab-comments')   renderCommentsTab(a);
+  else if (tab === 'tab-commission') renderCommissionTab(a);
 }
 
 function renderScoringTab(a) {
@@ -745,6 +764,30 @@ function renderScoringTab(a) {
     ]},
   ];
 
+  const dq = calcDataQuality(a);
+  const an = detectAnomalies(a);
+
+  // Top positive/negative factors
+  const allItems = [
+    {ok:a.breakdown?.hasPreviousSubsidy, name:'Алдыңғы субсидия бар', pts:10, factor:'Субсидия тарихы'},
+    {ok:a.breakdown?.usedFullSubsidy,    name:'100% игерілген',        pts:8,  factor:'Субсидия тарихы'},
+    {ok:a.breakdown?.reportsOnTime,      name:'Есептер уақытылы',      pts:7,  factor:'Субсидия тарихы'},
+    {ok:a.breakdown?.noViolations,       name:'Бұзушылықтар жоқ',      pts:5,  factor:'Субсидия тарихы'},
+    {ok:a.breakdown?.aboveAvgYield,      name:'Өнімділік орташадан жоғары', pts:12, factor:'Өнімділік'},
+    {ok:a.breakdown?.positiveTrend,      name:'3 жылдық өсу тренді',   pts:10, factor:'Өнімділік'},
+    {ok:a.breakdown?.costEfficient,      name:'Шығын тиімділігі',       pts:8,  factor:'Өнімділік'},
+    {ok:a.breakdown?.landAreaOk,         name:'Жер алаңы оңтайлы',     pts:8,  factor:'Профиль'},
+    {ok:a.breakdown?.equipmentOk,        name:'Техника >5 бірлік',      pts:7,  factor:'Профиль'},
+    {ok:a.breakdown?.hasIrrigation,      name:'Суландыру бар',          pts:5,  factor:'Профиль'},
+    {ok:a.breakdown?.manyEmployees,      name:'Қызметкерлер >10',       pts:6,  factor:'Әлеуметтік'},
+    {ok:a.breakdown?.isRural,            name:'Ауылдық аймақ',          pts:5,  factor:'Әлеуметтік'},
+    {ok:a.breakdown?.cleanCreditHistory, name:'Таза несие тарихы',      pts:4,  factor:'Тәуекел'},
+    {ok:a.breakdown?.noTaxDebt,          name:'Салық берешегі жоқ',     pts:4,  factor:'Тәуекел'},
+    {ok:a.breakdown?.noLegalDisputes,    name:'Сот дауы жоқ',           pts:2,  factor:'Тәуекел'},
+  ];
+  const positives = allItems.filter(i => i.ok).sort((a,b) => b.pts - a.pts).slice(0, 4);
+  const negatives = allItems.filter(i => !i.ok).sort((a,b) => b.pts - a.pts).slice(0, 4);
+
   const isRec = a.totalScore >= 65, isRev = a.totalScore >= 50 && a.totalScore < 65;
   const recCls = isRec?'rec-green':isRev?'rec-yellow':'rec-red';
   const recIcon = isRec?'✅':isRev?'⚠️':'❌';
@@ -755,7 +798,20 @@ function renderScoringTab(a) {
     : `${a.name} жеткіліксіз балл (${a.totalScore}). Субсидия беруге ұсынылмайды.`;
 
   inner.innerHTML = `
-    <div class="alert alert-success mb-4">💡 Балл ${factors.length} фактор бойынша есептелді — <b>${a.totalScore}/100</b></div>
+    <div class="alert alert-success mb-4">💡 Балл ${factors.length} фактор бойынша есептелді — <b>${a.totalScore}/100</b>
+      &nbsp;·&nbsp; Деректер: <b style="color:${dq.completeness>=80?'var(--success)':'var(--warning)'}">${dq.completeness}%</b>
+      &nbsp;·&nbsp; Аномалия: <b style="color:${an.anomalyRisk==='Жоқ'||an.anomalyRisk==='Төмен'?'var(--success)':an.anomalyRisk==='Орташа'?'var(--warning)':'var(--danger)'}">${an.anomalyRisk==='Жоқ'?'Норма':an.anomalyRisk}</b>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+      <div class="card" style="padding:14px;border-left:3px solid var(--success)">
+        <div style="font-size:11px;font-weight:700;color:var(--success);margin-bottom:8px;text-transform:uppercase">✅ Күшті факторлар</div>
+        ${positives.length ? positives.map(i=>`<div style="font-size:12px;display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span>${i.name}</span><b style="color:var(--success)">+${i.pts}</b></div>`).join('') : '<div style="font-size:12px;color:var(--text-muted)">Жоқ</div>'}
+      </div>
+      <div class="card" style="padding:14px;border-left:3px solid var(--danger)">
+        <div style="font-size:11px;font-weight:700;color:var(--danger);margin-bottom:8px;text-transform:uppercase">❌ Жетіспейтін факторлар</div>
+        ${negatives.length ? negatives.map(i=>`<div style="font-size:12px;display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span>${i.name}</span><b style="color:var(--danger)">-${i.pts}</b></div>`).join('') : '<div style="font-size:12px;color:var(--text-muted)">Жоқ</div>'}
+      </div>
+    </div>
     <div class="factors-grid" id="factors-grid-detail">
       ${factors.map((f,fi) => `
         <div class="factor-card">
@@ -948,6 +1004,276 @@ function renderCommentsTab(a) {
         <button class="btn btn-primary btn-sm" onclick="submitComment('${a.id}')"><i class="fas fa-paper-plane"></i> Жіберу</button>
       </div>
     </div>`;
+}
+
+// ─── RISK / ANOMALY TAB ───────────────────────────────────────────────────────
+function renderRiskTab(a) {
+  const el = document.getElementById('risk-tab-content');
+  if (!el) return;
+  const an = detectAnomalies(a);
+  const dq = calcDataQuality(a);
+
+  const riskColors = { 'Жоқ':'var(--success)', 'Төмен':'var(--success)', 'Орташа':'var(--warning)', 'Жоғары':'var(--danger)' };
+  const riskBg    = { 'Жоқ':'#E8F5E9', 'Төмен':'#E8F5E9', 'Орташа':'#FFF8E1', 'Жоғары':'#FFEBEE' };
+  const riskIcon  = { 'Жоқ':'fa-check-circle', 'Төмен':'fa-check-circle', 'Орташа':'fa-exclamation-triangle', 'Жоғары':'fa-times-circle' };
+  const rc = riskColors[an.anomalyRisk] || 'var(--text-muted)';
+
+  const flagsHtml = an.flags.length === 0
+    ? `<div class="empty-state" style="padding:24px"><div class="empty-icon">✅</div><div class="empty-title">Аномалиялар анықталмады</div><div class="empty-subtitle">Деректер тексерістен өтті</div></div>`
+    : an.flags.map(f => `
+        <div class="anomaly-item ${f.type}">
+          <i class="fas ${f.type==='error'?'fa-times-circle':'fa-exclamation-triangle'} anomaly-icon"></i>
+          <div class="anomaly-body">
+            <div class="anomaly-code">${f.code.replace(/_/g,' ')}</div>
+            <div class="anomaly-text">${f.text}</div>
+          </div>
+        </div>`).join('');
+
+  const qFieldsHtml = dq.fields.map(f => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+      <span style="color:${f.present?'var(--text)':'var(--danger)'}">${f.required?'<b>*</b> ':''}${f.label}</span>
+      <span>${f.present ? '<span style="color:var(--success)">✅</span>' : '<span style="color:var(--danger)">❌ Жоқ</span>'}</span>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="card" style="padding:20px;border-left:4px solid ${rc};text-align:center">
+        <i class="fas ${riskIcon[an.anomalyRisk]||'fa-shield-alt'}" style="font-size:32px;color:${rc};margin-bottom:8px"></i>
+        <div style="font-size:22px;font-weight:800;color:${rc}">${an.anomalyRisk === 'Жоқ' ? 'Норма' : an.anomalyRisk}</div>
+        <div style="font-size:12px;color:var(--text-muted)">Аномалия тәуекел деңгейі</div>
+      </div>
+      <div class="card" style="padding:20px;text-align:center">
+        <div style="font-size:32px;font-weight:800;color:${dq.completeness>=80?'var(--success)':dq.completeness>=60?'var(--warning)':'var(--danger)'}">${dq.completeness}%</div>
+        <div style="font-size:12px;color:var(--text-muted)">Деректер толықтығы</div>
+        <div style="font-size:11px;margin-top:6px">${dq.filled}/${dq.total} өріс толтырылған</div>
+        ${dq.missingRequired.length>0?`<div style="font-size:11px;color:var(--danger);margin-top:4px">❌ ${dq.missingRequired.map(f=>f.label).join(', ')} — міндетті</div>`:''}
+      </div>
+    </div>
+
+    <div class="card mb-4" style="padding:20px">
+      <div class="card-title mb-3"><i class="fas fa-flag" style="color:var(--warning)"></i> Аномалиялар (${an.flags.length})</div>
+      ${flagsHtml}
+    </div>
+
+    <div class="card" style="padding:20px">
+      <div class="card-title mb-3"><i class="fas fa-table" style="color:var(--primary)"></i> Деректер сапасы — өрістер</div>
+      <div style="max-height:340px;overflow-y:auto">${qFieldsHtml}</div>
+    </div>
+  `;
+}
+
+// ─── WHAT-IF SIMULATION TAB ───────────────────────────────────────────────────
+function renderWhatIfTab(a) {
+  const el = document.getElementById('whatif-tab-content');
+  if (!el) return;
+  const threshold = AppState.shortlistThreshold;
+
+  el.innerHTML = `
+    <div class="card mb-4" style="padding:20px">
+      <div class="card-title mb-2">🔬 What-if Симуляция</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Параметрлерді өзгертіп, балл қалай өзгеретінін тексеріңіз</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+        <div class="form-group">
+          <label class="form-label" style="font-size:12px">Алдыңғы субсидия</label>
+          <select class="form-control" id="wi-prevSubsidy" style="font-size:12px">
+            <option value="1" ${a.hasPreviousSubsidy?'selected':''}>Бар</option>
+            <option value="0" ${!a.hasPreviousSubsidy?'selected':''}>Жоқ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size:12px">Субсидия 100% игерілді</label>
+          <select class="form-control" id="wi-usedFull" style="font-size:12px">
+            <option value="1" ${a.usedFullSubsidy?'selected':''}>Иә</option>
+            <option value="0" ${!a.usedFullSubsidy?'selected':''}>Жоқ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size:12px">Өнімділік орташадан жоғары</label>
+          <select class="form-control" id="wi-aboveYield" style="font-size:12px">
+            <option value="1" ${a.aboveAvgYield?'selected':''}>Иә</option>
+            <option value="0" ${!a.aboveAvgYield?'selected':''}>Жоқ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size:12px">Өсу тренді бар</label>
+          <select class="form-control" id="wi-trend" style="font-size:12px">
+            <option value="1" ${a.positiveTrend?'selected':''}>Иә</option>
+            <option value="0" ${!a.positiveTrend?'selected':''}>Жоқ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size:12px">Суландыру жүйесі</label>
+          <select class="form-control" id="wi-irrigation" style="font-size:12px">
+            <option value="1" ${a.hasIrrigation?'selected':''}>Бар</option>
+            <option value="0" ${!a.hasIrrigation?'selected':''}>Жоқ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size:12px">Таза несие тарихы</label>
+          <select class="form-control" id="wi-credit" style="font-size:12px">
+            <option value="1" ${a.cleanCreditHistory?'selected':''}>Иә</option>
+            <option value="0" ${!a.cleanCreditHistory?'selected':''}>Жоқ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size:12px">Салық берешегі жоқ</label>
+          <select class="form-control" id="wi-tax" style="font-size:12px">
+            <option value="1" ${a.noTaxDebt?'selected':''}>Иә</option>
+            <option value="0" ${!a.noTaxDebt?'selected':''}>Жоқ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size:12px">Жер алаңы (га)</label>
+          <input type="number" class="form-control" id="wi-land" value="${a.landArea||0}" style="font-size:12px">
+        </div>
+      </div>
+      <button class="btn btn-primary mt-3" onclick="runWhatIf('${a.id}')">
+        <i class="fas fa-play"></i> Есептеу
+      </button>
+    </div>
+    <div id="whatif-result"></div>`;
+}
+
+function runWhatIf(id) {
+  const a = AppState.getApplicant(id);
+  if (!a) return;
+  const changes = {
+    hasPreviousSubsidy: document.getElementById('wi-prevSubsidy')?.value === '1',
+    usedFullSubsidy:    document.getElementById('wi-usedFull')?.value === '1',
+    aboveAvgYield:      document.getElementById('wi-aboveYield')?.value === '1',
+    positiveTrend:      document.getElementById('wi-trend')?.value === '1',
+    hasIrrigation:      document.getElementById('wi-irrigation')?.value === '1',
+    cleanCreditHistory: document.getElementById('wi-credit')?.value === '1',
+    noTaxDebt:          document.getElementById('wi-tax')?.value === '1',
+    landArea:           parseFloat(document.getElementById('wi-land')?.value||a.landArea),
+  };
+  const r = calcWhatIf(a, changes);
+  const diffColor = r.diff > 0 ? 'var(--success)' : r.diff < 0 ? 'var(--danger)' : 'var(--text-muted)';
+  const diffSign  = r.diff > 0 ? '+' : '';
+  const slMsg = r.shortlistChange === 'enters'
+    ? `<span style="color:var(--success);font-weight:700">✅ Shortlist-ке кіреді!</span>`
+    : r.shortlistChange === 'exits'
+    ? `<span style="color:var(--danger);font-weight:700">❌ Shortlist-тен шығады</span>`
+    : r.wouldEnterShortlist
+    ? `<span style="color:var(--success)">✅ Shortlist-те қалады</span>`
+    : `<span style="color:var(--text-muted)">Shortlist-ке кірмейді</span>`;
+
+  const el = document.getElementById('whatif-result');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="card" style="padding:20px;border-top:3px solid var(--primary)">
+      <div class="card-title mb-3">📊 Симуляция нәтижесі</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:center;margin-bottom:20px">
+        <div style="padding:16px;background:var(--bg);border-radius:10px">
+          <div style="font-size:28px;font-weight:800;color:${getScoreColor(r.originalScore)}">${r.originalScore}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Қазіргі балл</div>
+        </div>
+        <div style="padding:16px;background:var(--bg);border-radius:10px;display:flex;align-items:center;justify-content:center">
+          <div style="font-size:28px;color:${diffColor};font-weight:800">${diffSign}${r.diff}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-left:6px">өзгеріс</div>
+        </div>
+        <div style="padding:16px;background:var(--bg);border-radius:10px">
+          <div style="font-size:28px;font-weight:800;color:${getScoreColor(r.newScore)}">${r.newScore}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Жаңа балл</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:14px;margin-bottom:12px">${slMsg}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;font-size:11px">
+        ${[['Субсидия',r.factors?.f1||0,25],['Өнімділік',r.factors?.f2||0,30],['Профиль',r.factors?.f3||0,20],['Әлеум.',r.factors?.f4||0,15],['Тәуекел',r.factors?.f5||0,10]]
+          .map(([n,s,mx]) => `<div style="text-align:center;background:var(--bg);padding:8px 12px;border-radius:8px;min-width:80px">
+            <div style="font-weight:700;color:var(--primary)">${s}/${mx}</div>
+            <div style="color:var(--text-muted)">${n}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// ─── COMMISSION REVIEW TAB ────────────────────────────────────────────────────
+function renderCommissionTab(a) {
+  const el = document.getElementById('commission-tab-content');
+  if (!el) return;
+  const rev = AppState.getCommissionReview(a.id);
+  const statusMap = {
+    pending:  { label:'Күтілуде',   color:'var(--text-muted)',  bg:'var(--bg)',    icon:'fa-clock' },
+    approved: { label:'Бекітілді',  color:'var(--success)',     bg:'#E8F5E9',      icon:'fa-check-circle' },
+    hold:     { label:'Ұсталды',    color:'var(--warning)',     bg:'#FFF8E1',      icon:'fa-pause-circle' },
+    rejected: { label:'Қабылданбады', color:'var(--danger)',    bg:'#FFEBEE',      icon:'fa-times-circle' },
+    override: { label:'Қайта бағаланды', color:'var(--info)',   bg:'#E3F2FD',      icon:'fa-edit' },
+  };
+  const st = statusMap[rev.status] || statusMap.pending;
+
+  el.innerHTML = `
+    <div class="card mb-4" style="padding:20px;border-left:4px solid ${st.color};background:${st.bg}">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <i class="fas ${st.icon}" style="font-size:24px;color:${st.color}"></i>
+        <div>
+          <div style="font-size:16px;font-weight:700;color:${st.color}">${st.label}</div>
+          ${rev.reviewedBy ? `<div style="font-size:11px;color:var(--text-muted)">${rev.reviewedBy} · ${rev.reviewedAt} ${rev.time||''}</div>` : ''}
+        </div>
+      </div>
+      ${rev.comment ? `<div style="font-size:13px;margin-top:8px;padding:10px;background:rgba(255,255,255,0.6);border-radius:8px">"${rev.comment}"</div>` : ''}
+      ${rev.overrideReason ? `<div style="font-size:12px;color:var(--info);margin-top:6px"><b>Негіздеме:</b> ${rev.overrideReason}</div>` : ''}
+    </div>
+
+    <div class="card mb-4" style="padding:20px">
+      <div class="card-title mb-3">⚖️ Комиссия шешімі</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+        <button class="btn btn-sm ${rev.status==='approved'?'btn-primary':'btn-outline'}" onclick="setCommission('${a.id}','approved')">
+          <i class="fas fa-check"></i> Бекіту
+        </button>
+        <button class="btn btn-sm ${rev.status==='hold'?'btn-accent':'btn-outline'}" onclick="setCommission('${a.id}','hold')">
+          <i class="fas fa-pause"></i> Ұстап қалу
+        </button>
+        <button class="btn btn-sm ${rev.status==='rejected'?'btn-danger':'btn-outline'}" onclick="setCommission('${a.id}','rejected')">
+          <i class="fas fa-times"></i> Қабылдамау
+        </button>
+        <button class="btn btn-sm ${rev.status==='override'?'btn-info':'btn-outline'}" onclick="setCommission('${a.id}','override')">
+          <i class="fas fa-edit"></i> Жоғарылату
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" style="font-size:12px">Комментарий</label>
+        <textarea id="commission-comment" class="form-control" rows="3" placeholder="Шешімнің себебін жазыңыз..." style="font-size:13px;resize:vertical">${rev.comment||''}</textarea>
+      </div>
+      <div class="form-group" id="override-reason-group" style="${rev.status==='override'?'':'display:none'}">
+        <label class="form-label" style="font-size:12px">Жоғарылату негіздемесі</label>
+        <input type="text" id="commission-override-reason" class="form-control" placeholder="Алгоритмнен ауытқу себебі..." value="${rev.overrideReason||''}" style="font-size:13px">
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="saveCommission('${a.id}')">
+        <i class="fas fa-save"></i> Сақтау
+      </button>
+    </div>
+
+    <div class="card" style="padding:20px">
+      <div class="card-title mb-2">📊 AI Ұсыным</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Алгоритм ұсынымы: <b style="color:${getScoreColor(a.totalScore)}">${a.recommendation}</b> (${a.totalScore} балл)</div>
+      <button class="btn btn-outline btn-sm" onclick="showAIModal('🤖 Комиссия ұсынымы','${a.name} (${a.totalScore} балл, ${a.region}) өтінімі бойынша комиссия шешімін қазақша 3 сөйлемде негіздеңіз.','recommend')">
+        🤖 AI Ұсыным алу
+      </button>
+    </div>`;
+}
+
+function setCommission(id, status) {
+  const overrideGroup = document.getElementById('override-reason-group');
+  if (overrideGroup) overrideGroup.style.display = status === 'override' ? '' : 'none';
+  // Highlight active button
+  document.querySelectorAll('#commission-tab-content .btn').forEach(b => {
+    if (b.onclick?.toString().includes(status)) b.classList.add('btn-primary');
+  });
+  saveCommission(id, status);
+}
+
+function saveCommission(id, statusOverride) {
+  const comment = document.getElementById('commission-comment')?.value || '';
+  const overrideReason = document.getElementById('commission-override-reason')?.value || '';
+  const current = AppState.getCommissionReview(id);
+  const status = statusOverride || current.status || 'pending';
+  AppState.updateCommissionReview(id, status, comment, overrideReason);
+  const a = AppState.getApplicant(id);
+  if (a) renderCommissionTab(a);
+  showToast(`✅ Комиссия шешімі сақталды`, 'success', 2000);
 }
 
 function submitComment(id) {

@@ -340,6 +340,7 @@
           <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px" id="detail-iin-label"></div>
           <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px" id="detail-location"></div>
           <div class="hero-badges" id="detail-badges"></div>
+          <div id="detail-qa-badges" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:6px" id="detail-date"></div>
         </div>
         <div class="hero-score-section">
@@ -353,18 +354,24 @@
       </div>
 
       <div class="tabs mb-4" style="background:var(--bg);position:sticky;top:64px;z-index:50;margin:0 -24px;padding:0 24px;box-shadow:0 2px 8px rgba(0,0,0,0.05)">
-        <button class="tab-btn active" data-tab="tab-scoring">Скоринг</button>
-        <button class="tab-btn" data-tab="tab-data">Деректер</button>
-        <button class="tab-btn" data-tab="tab-history">Субсидия тарихы</button>
-        <button class="tab-btn" data-tab="tab-docs">Құжаттар</button>
-        <button class="tab-btn" data-tab="tab-comments">Комментарийлер</button>
+        <button class="tab-btn active" data-tab="tab-scoring">📊 Скоринг</button>
+        <button class="tab-btn" data-tab="tab-risk">🛡️ Тәуекел</button>
+        <button class="tab-btn" data-tab="tab-whatif">🔬 Симуляция</button>
+        <button class="tab-btn" data-tab="tab-data">📋 Деректер</button>
+        <button class="tab-btn" data-tab="tab-history">📅 Тарих</button>
+        <button class="tab-btn" data-tab="tab-docs">📁 Құжаттар</button>
+        <button class="tab-btn" data-tab="tab-comments">💬 Комментарийлер</button>
+        <button class="tab-btn" data-tab="tab-commission">⚖️ Комиссия</button>
       </div>
 
       <div class="tab-content active" id="tab-scoring"><div id="scoring-tab-inner"></div></div>
+      <div class="tab-content" id="tab-risk"><div id="risk-tab-content"></div></div>
+      <div class="tab-content" id="tab-whatif"><div id="whatif-tab-content"></div></div>
       <div class="tab-content" id="tab-data"><div id="data-tab-content"></div></div>
       <div class="tab-content" id="tab-history"><div id="history-tab-content"></div></div>
       <div class="tab-content" id="tab-docs"><div id="docs-tab-content"></div></div>
       <div class="tab-content" id="tab-comments"><div id="comments-tab-content"></div></div>
+      <div class="tab-content" id="tab-commission"><div id="commission-tab-content"></div></div>
     </section>
 
     <!-- ── SCORING ── -->
