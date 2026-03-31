@@ -300,12 +300,43 @@ function initDashboard() {
   renderTopApplicants();
   initDashboardAreaChart('30d');
   initDashboardDonutChart(stats.byRegion);
+  renderDashboardMLWidgets(stats);
 
   const user = JSON.parse(localStorage.getItem('agri_user') || '{}');
   const av = document.getElementById('navbar-avatar');
   if (av) av.textContent = (user.login || 'A').charAt(0).toUpperCase();
 
   setTimeout(animateAllProgressBars, 200);
+}
+
+function renderDashboardMLWidgets(stats) {
+  // Avg success probability
+  const probs = AppState.applicants.map(a => a.successProb ? a.successProb.probability : calcSuccessProbability(a).probability);
+  const avgProb = probs.length ? Math.round(probs.reduce((s,v)=>s+v,0)/probs.length) : 0;
+  const probEl = document.getElementById('kpi-avg-prob');
+  if (probEl) animateCounter(probEl, avgProb);
+
+  // Anomaly count
+  const anomalyCount = AppState.applicants.filter(a => { const an = detectAnomalies(a); return an.anomalyRisk === 'Жоғары' || an.anomalyRisk === 'Орташа'; }).length;
+  const anomalyEl = document.getElementById('kpi-anomaly');
+  if (anomalyEl) animateCounter(anomalyEl, anomalyCount);
+
+  // Cluster distribution
+  const clusterEl = document.getElementById('dash-cluster-dist');
+  if (clusterEl) {
+    clusterEl.innerHTML = CLUSTER_ORDERED_LABELS.map(lbl => {
+      const cnt = AppState.applicants.filter(a=>a.clusterLabel===lbl.name).length;
+      const pct = AppState.applicants.length ? Math.round(cnt/AppState.applicants.length*100) : 0;
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="width:10px;height:10px;border-radius:50%;background:${lbl.color};flex-shrink:0"></span>
+        <span style="flex:1;font-size:12px">${lbl.icon} ${lbl.name}</span>
+        <span style="font-weight:700;font-size:13px">${cnt}</span>
+        <div style="width:60px;height:6px;background:var(--border);border-radius:3px">
+          <div style="width:${pct}%;height:100%;background:${lbl.color};border-radius:3px"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
 }
 
 function renderTopApplicants() {
@@ -408,7 +439,7 @@ function initApplicants() {
   renderApplicantsTable();
 
   document.getElementById('app-search').oninput = debounce(filterApplicants, 250);
-  ['filter-region','filter-district','filter-type','filter-score','filter-status'].forEach(id => {
+  ['filter-region','filter-district','filter-type','filter-score','filter-status','filter-cluster','filter-anomaly'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.onchange = filterApplicants;
   });
@@ -452,6 +483,8 @@ function filterApplicants() {
   const pType = document.getElementById('filter-type')?.value||'';
   const scoreRange = document.getElementById('filter-score')?.value||'';
   const status = document.getElementById('filter-status')?.value||'';
+  const cluster = document.getElementById('filter-cluster')?.value||'';
+  const anomaly = document.getElementById('filter-anomaly')?.value||'';
 
   appState.filtered = AppState.applicants.filter(a => {
     if (q && !a.name.toLowerCase().includes(q) && !a.iin.includes(q)) return false;
@@ -459,6 +492,12 @@ function filterApplicants() {
     if (district && a.district !== district) return false;
     if (pType && a.productionType !== pType) return false;
     if (status && a.recommendation !== status) return false;
+    if (cluster && a.clusterLabel !== cluster) return false;
+    if (anomaly) {
+      const an = detectAnomalies(a);
+      if (anomaly === 'high' && an.anomalyRisk !== 'Жоғары') return false;
+      if (anomaly === 'any' && an.anomalyRisk === 'Жоқ') return false;
+    }
     if (scoreRange) {
       const [mn, mx] = scoreRange.split('-').map(Number);
       if (a.totalScore < mn || a.totalScore > (mx||100)) return false;
@@ -469,7 +508,7 @@ function filterApplicants() {
   sortApplicants();
   renderApplicantsTable();
 
-  const activeCnt = ['filter-region','filter-district','filter-type','filter-score','filter-status'].filter(id=>document.getElementById(id)?.value).length;
+  const activeCnt = ['filter-region','filter-district','filter-type','filter-score','filter-status','filter-cluster','filter-anomaly'].filter(id=>document.getElementById(id)?.value).length;
   const badge = document.getElementById('filter-badge');
   if (badge) { badge.textContent = activeCnt > 0 ? `${activeCnt} сүзгі белсенді` : ''; badge.style.display = activeCnt > 0 ? 'inline-flex' : 'none'; }
 }
@@ -501,21 +540,24 @@ function renderApplicantsTable() {
       <button class="btn btn-outline" onclick="resetApplicantFilters()">Сүзгіні тазарту</button>
     </div></td></tr>`;
   } else {
+    const p = 'padding:7px 6px';
     tbody.innerHTML = rows.map((a, i) => `
       <tr class="${selected.has(a.id)?'selected':''}" style="animation-delay:${i*30}ms">
-        <td><input type="checkbox" class="row-cb" data-id="${a.id}" ${selected.has(a.id)?'checked':''} onchange="toggleSelect('${a.id}',this.checked)" style="accent-color:var(--primary);cursor:pointer"></td>
-        <td style="color:var(--text-muted);font-size:12px">${a.rank}</td>
-        <td><span style="font-family:monospace;font-size:11px">${a.iin}</span></td>
-        <td><div style="font-weight:600">${a.name}</div><div style="font-size:11px;color:var(--text-muted)">${a.entityType}</div></td>
-        <td><div style="font-size:13px">${a.district}</div><div style="font-size:11px;color:var(--text-muted)">${a.region}</div></td>
-        <td style="font-size:13px">${a.productionType}</td>
-        <td style="font-size:13px">${formatNumber(a.landArea)} га</td>
-        <td><span class="badge ${getScoreBadgeClass(a.totalScore)} ${a.totalScore>=90?'badge-pulse':''}">${a.totalScore}</span></td>
-        <td style="font-size:13px;white-space:nowrap">${getRiskDot(a.riskLevel)} ${a.riskLevel}</td>
-        <td><span class="badge ${getStatusBadgeClass(a.recommendation)}">${a.recommendation}</span></td>
-        <td style="color:var(--text-muted);font-size:12px">${a.applicationDate}</td>
-        <td>
-          <div class="row-actions">
+        <td style="${p}"><input type="checkbox" class="row-cb" data-id="${a.id}" ${selected.has(a.id)?'checked':''} onchange="toggleSelect('${a.id}',this.checked)" style="accent-color:var(--primary);cursor:pointer"></td>
+        <td style="${p};color:var(--text-muted);font-size:11px">${a.rank}</td>
+        <td style="${p}"><span style="font-family:monospace;font-size:10px">${a.iin}</span></td>
+        <td style="${p}"><div style="font-weight:600;font-size:12px">${a.name}</div><div style="font-size:10px;color:var(--text-muted)">${a.entityType}</div></td>
+        <td style="${p}"><div style="font-size:11px">${a.district}</div><div style="font-size:10px;color:var(--text-muted)">${a.region}</div></td>
+        <td style="${p};font-size:11px">${a.productionType}</td>
+        <td style="${p};font-size:11px">${formatNumber(a.landArea)} га</td>
+        <td style="${p}"><span class="badge ${getScoreBadgeClass(a.totalScore)} ${a.totalScore>=90?'badge-pulse':''}" style="font-size:12px">${a.totalScore}</span></td>
+        <td style="${p}"><span class="badge ${a.clusterBadge||'cluster-mid'}" style="font-size:10px;white-space:nowrap">${a.clusterIcon||'📊'} ${a.clusterLabel||'—'}</span></td>
+        <td style="${p};font-size:11px;white-space:nowrap">${a.successProb ? '<span style="color:' + (a.successProb.probability>=70?'var(--success)':a.successProb.probability>=50?'var(--warning)':'var(--danger)') + ';font-weight:700">' + a.successProb.probability + '%</span>' : '—'}</td>
+        <td style="${p};font-size:11px;white-space:nowrap">${getRiskDot(a.riskLevel)} ${a.riskLevel}</td>
+        <td style="${p}"><span class="badge ${getStatusBadgeClass(a.recommendation)}" style="font-size:10px">${a.recommendation}</span></td>
+        <td style="${p};color:var(--text-muted);font-size:10px;white-space:nowrap">${a.applicationDate}</td>
+        <td style="${p}">
+          <div class="row-actions" style="opacity:1;gap:3px">
             <button class="action-btn" onclick="navigateTo('applicants/${a.id}')" title="Көру"><i class="fas fa-eye"></i></button>
             <button class="action-btn success" onclick="quickAddShortlist('${a.id}')" title="Shortlist"><i class="fas fa-star"></i></button>
             <button class="action-btn" onclick="showScoreQuick('${a.id}')" title="Балл"><i class="fas fa-chart-bar"></i></button>
@@ -798,9 +840,14 @@ function renderScoringTab(a) {
     : `${a.name} жеткіліксіз балл (${a.totalScore}). Субсидия беруге ұсынылмайды.`;
 
   inner.innerHTML = `
-    <div class="alert alert-success mb-4">💡 Балл ${factors.length} фактор бойынша есептелді — <b>${a.totalScore}/100</b>
-      &nbsp;·&nbsp; Деректер: <b style="color:${dq.completeness>=80?'var(--success)':'var(--warning)'}">${dq.completeness}%</b>
-      &nbsp;·&nbsp; Аномалия: <b style="color:${an.anomalyRisk==='Жоқ'||an.anomalyRisk==='Төмен'?'var(--success)':an.anomalyRisk==='Орташа'?'var(--warning)':'var(--danger)'}">${an.anomalyRisk==='Жоқ'?'Норма':an.anomalyRisk}</b>
+    <div class="alert alert-success mb-4" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>💡 Балл ${factors.length} фактор бойынша есептелді — <b>${a.totalScore}/100</b>
+        &nbsp;·&nbsp; Деректер: <b style="color:${dq.completeness>=80?'var(--success)':'var(--warning)'}">${dq.completeness}%</b>
+        &nbsp;·&nbsp; Аномалия: <b style="color:${an.anomalyRisk==='Жоқ'||an.anomalyRisk==='Төмен'?'var(--success)':an.anomalyRisk==='Орташа'?'var(--warning)':'var(--danger)'}">${an.anomalyRisk==='Жоқ'?'Норма':an.anomalyRisk}</b>
+      </div>
+      <button id="ai-score-btn" class="btn btn-sm" style="background:#7B1FA2;color:#fff;white-space:nowrap" onclick="requestAIScoring('${a.id}')">
+        <i class="fas fa-robot"></i> AI Бағалау
+      </button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
       <div class="card" style="padding:14px;border-left:3px solid var(--success)">
@@ -812,6 +859,29 @@ function renderScoringTab(a) {
         ${negatives.length ? negatives.map(i=>`<div style="font-size:12px;display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span>${i.name}</span><b style="color:var(--danger)">-${i.pts}</b></div>`).join('') : '<div style="font-size:12px;color:var(--text-muted)">Жоқ</div>'}
       </div>
     </div>
+    ${(function(){
+      const sp = a.successProb || calcSuccessProbability(a);
+      const clr = a.clusterColor || '#1565C0';
+      const probColor = sp.probability>=70?'var(--success)':sp.probability>=50?'var(--warning)':'var(--danger)';
+      const probW = sp.probability;
+      const riskW = sp.riskProb;
+      return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+        <div class="card" style="padding:16px;border-top:3px solid ${clr}">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">🤖 ML Кластер</div>
+          <div style="font-size:18px;font-weight:800;color:${clr};margin-bottom:4px">${a.clusterIcon||'📊'} ${a.clusterLabel||'Есептелуде'}</div>
+          <div style="font-size:11px;color:var(--text-secondary);line-height:1.5">${getClusterExplanation(a)}</div>
+        </div>
+        <div class="card" style="padding:16px;border-top:3px solid ${probColor}">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">📈 Сәтті игеру ықтималдығы</div>
+          <div style="font-size:18px;font-weight:800;color:${probColor};margin-bottom:8px">${probW}%</div>
+          <div style="display:flex;gap:4px;margin-bottom:6px">
+            <div style="height:8px;border-radius:4px 0 0 4px;background:${probColor};width:${probW}%;transition:width 1s ease"></div>
+            <div style="height:8px;border-radius:0 4px 4px 0;background:var(--danger);width:${riskW}%;opacity:0.3;transition:width 1s ease"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted)">Сенімділік: <b>${sp.confidence}</b> · Proxy модель</div>
+        </div>
+      </div>`;
+    })()}
     <div class="factors-grid" id="factors-grid-detail">
       ${factors.map((f,fi) => `
         <div class="factor-card">
@@ -829,6 +899,7 @@ function renderScoringTab(a) {
           <button class="btn btn-ghost btn-sm mt-2" style="width:100%;font-size:11px" onclick="explainFactor(${fi},'${a.id}')">🤖 Толығырақ</button>
         </div>`).join('')}
     </div>
+    <div id="ai-scoring-result"></div>
     <div class="card mt-4 mb-4">
       <div class="card-header"><span class="card-title">Факторлар диаграммасы</span></div>
       <div class="chart-wrapper"><canvas id="radar-chart"></canvas></div>
@@ -855,6 +926,114 @@ function explainFactor(idx, id) {
   const scores = [a?.factors?.f1,a?.factors?.f2,a?.factors?.f3,a?.factors?.f4,a?.factors?.f5];
   const prompt = `${a?.name} өтінімі бойынша "${names[idx]}" факторының ${scores[idx]} баллын қазақша 3-4 сөйлемде түсіндіріңіз.`;
   showAIModal(`🤖 ${names[idx]}`, prompt, 'score');
+}
+
+async function requestAIScoring(id) {
+  const a = AppState.getApplicant(id);
+  if (!a) return;
+  const btn = document.getElementById('ai-score-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI бағалауда...'; }
+
+  const prompt = `Сен ауылшаруашылық субсидия скоринг жүйесісің. Мына өтінімді талдап, əр фактор бойынша балл қой.
+
+Шаруашылық: ${a.name}
+Аймақ: ${a.region}
+Жер алаңы: ${a.landArea} га
+Дақыл: ${a.cropType}
+Өнімділік: ${a.yield} т/га
+Техника: ${a.equipmentCount} бірлік
+Қызметкерлер: ${a.employees}
+Субсидия тарихы: ${a.hasPreviousSubsidy ? 'бар' : 'жоқ'}
+Игеру пайызы: ${a.subsidyUtilization}%
+Сұралған сома: ${a.requestedAmount} тг
+Жылдық кіріс: ${a.annualRevenue} тг
+Несие рейтингі: ${a.creditScore}
+Суландыру: ${a.hasIrrigation ? 'бар' : 'жоқ'}
+Ауылдық аймақ: ${a.isRural ? 'иə' : 'жоқ'}
+Салық берешегі: ${a.hasTaxDebt ? 'бар' : 'жоқ'}
+Сот дауы: ${a.hasLegalDisputes ? 'бар' : 'жоқ'}
+
+Жауапты ТІКЕЛЕЙ JSON форматында бер (markdown жоқ, тек JSON):
+{
+  "f1": {"score": 0-25, "reason": "бір сөйлем қазақша"},
+  "f2": {"score": 0-30, "reason": "бір сөйлем қазақша"},
+  "f3": {"score": 0-20, "reason": "бір сөйлем қазақша"},
+  "f4": {"score": 0-15, "reason": "бір сөйлем қазақша"},
+  "f5": {"score": 0-10, "reason": "бір сөйлем қазақша"},
+  "summary": "жалпы бағалау 2-3 сөйлем қазақша"
+}`;
+
+  try {
+    const res = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+    const d = await res.json();
+    let text = '';
+    if (d.demo) {
+      // demo fallback
+      text = `{"f1":{"score":${a.factors?.f1||15},"reason":"Субсидия игеру тарихы орташа деңгейде."},"f2":{"score":${a.factors?.f2||20},"reason":"Өнімділік аймақтық орташаға сəйкес келеді."},"f3":{"score":${a.factors?.f3||14},"reason":"Жер алаңы мен техника саны жеткілікті."},"f4":{"score":${a.factors?.f4||10},"reason":"Ауылдық аймақта əлеуметтік маңызы бар."},"f5":{"score":${a.factors?.f5||7},"reason":"Несие тарихы таза, тәуекел деңгейі төмен."},"summary":"Өтінім орташа деңгейде бағаланды. Комиссия қосымша қарауды ұсынады."}`;
+    } else {
+      text = d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    }
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('JSON жауап алынбады');
+    const aiScores = JSON.parse(jsonMatch[0]);
+    renderAIScoringResult(id, aiScores);
+  } catch(e) {
+    showToast('AI бағалауда қате: ' + e.message, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-robot"></i> AI Бағалау'; }
+  }
+}
+
+function renderAIScoringResult(id, aiScores) {
+  const a = AppState.getApplicant(id);
+  if (!a) return;
+  const factorKeys  = ['f1','f2','f3','f4','f5'];
+  const factorNames = ['Субсидия тарихы','Өнімділік','Шаруашылық профилі','Әлеуметтік-экономикалық','Тәуекел бағасы'];
+  const factorMax   = [25, 30, 20, 15, 10];
+  const factorWeights = ['25%','30%','20%','15%','10%'];
+
+  const grid = document.getElementById('factors-grid-detail');
+  if (grid) {
+    grid.innerHTML = factorKeys.map((key, i) => {
+      const ai  = aiScores[key] || {};
+      const det = a.factors?.[key] || 0;
+      const score = Math.min(Math.max(Math.round(ai.score || 0), 0), factorMax[i]);
+      const pct = Math.round(score / factorMax[i] * 100);
+      return `
+        <div class="factor-card" style="border-top:3px solid #7B1FA2">
+          <div class="factor-header">
+            <span class="factor-name">${factorNames[i]}</span>
+            <span class="badge" style="background:#7B1FA2;color:#fff;font-size:10px">${factorWeights[i]}</span>
+          </div>
+          <div class="factor-score-big">${score}<span style="font-size:14px;color:var(--text-muted)">/${factorMax[i]}</span></div>
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px">Детерминистік: <b>${det}</b></div>
+          <div class="progress-wrap mb-2">
+            <div class="progress-bar" style="width:${pct}%;background:${getScoreColor(pct)}"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-secondary);line-height:1.6;padding:8px;background:var(--bg);border-radius:6px;border:1px solid var(--border)">
+            🤖 ${ai.reason || ''}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  const total = factorKeys.reduce((s, k) => s + Math.min(Math.round(aiScores[k]?.score || 0), factorMax[factorKeys.indexOf(k)]), 0);
+  const aiResult = document.getElementById('ai-scoring-result');
+  if (aiResult) {
+    aiResult.innerHTML = `
+      <div class="alert" style="background:linear-gradient(135deg,#EDE7F6,#F3E5F5);border-left:4px solid #7B1FA2;margin-top:16px">
+        <div style="font-weight:700;color:#7B1FA2;margin-bottom:6px;font-size:14px">🤖 AI жалпы бағасы: ${total}/100</div>
+        <div style="font-size:13px;line-height:1.6">${aiScores.summary || ''}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:8px">⚠️ AI бағасы ақпараттық сипатта — финалды шешімді комиссия қабылдайды</div>
+      </div>`;
+  }
+
+  const btn = document.getElementById('ai-score-btn');
+  if (btn) { btn.innerHTML = '✅ AI бағаланды'; btn.style.background = '#7B1FA2'; btn.disabled = false; }
+  animateAllProgressBars();
 }
 
 function initRadarChart(a) {
@@ -1510,7 +1689,7 @@ function onDragEnd(e) { e.target.closest('tr')?.classList.remove('dragging'); do
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
 function initAnalytics() {
-  setTimeout(() => { initRegionalChart(); initTypeChart(); initTrendChart(); initScatterChart(); }, 100);
+  setTimeout(() => { initRegionalChart(); initTypeChart(); initTrendChart(); initScatterChart(); initClusterChart(); initProbabilityChart(); }, 100);
 }
 
 function initRegionalChart() {
@@ -1566,6 +1745,36 @@ function initScatterChart() {
       plugins:{legend:{position:'top',labels:{font:{family:'Inter',size:12},usePointStyle:true}},tooltip:{callbacks:{label:c=>`${c.parsed.x} га, ${c.parsed.y}% өнімділік`}}},
       scales:{x:{title:{display:true,text:'Алаң (га)',font:{size:11}},ticks:{font:{size:11}}},y:{title:{display:true,text:'Өнімділік (%)',font:{size:11}},ticks:{font:{size:11}}}}
     }
+  });
+}
+
+function initClusterChart() {
+  const ctx = document.getElementById('cluster-chart'); if(!ctx) return;
+  if(Charts.cluster) Charts.cluster.destroy();
+  const labels = CLUSTER_ORDERED_LABELS.map(l=>l.name);
+  const colors = CLUSTER_ORDERED_LABELS.map(l=>l.color);
+  const counts = labels.map(lbl => AppState.applicants.filter(a=>a.clusterLabel===lbl).length);
+  Charts.cluster = new Chart(ctx, { type:'doughnut',
+    data:{ labels, datasets:[{ data:counts, backgroundColor:colors, borderWidth:2, borderColor:'#fff', hoverOffset:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'55%',
+      plugins:{ legend:{ position:'bottom', labels:{ font:{ family:'Inter', size:12 }, usePointStyle:true } } } }
+  });
+}
+
+function initProbabilityChart() {
+  const ctx = document.getElementById('probability-chart'); if(!ctx) return;
+  if(Charts.probability) Charts.probability.destroy();
+  const buckets = ['0-20','21-40','41-60','61-80','81-100'];
+  const counts = [0,0,0,0,0];
+  AppState.applicants.forEach(a => {
+    const p = a.successProb ? a.successProb.probability : calcSuccessProbability(a).probability;
+    counts[Math.min(Math.floor(p/20), 4)]++;
+  });
+  Charts.probability = new Chart(ctx, { type:'bar',
+    data:{ labels: buckets.map(b=>b+'%'), datasets:[{ label:'Өтінімдер', data:counts,
+      backgroundColor:['#C62828','#E65100','#F9A825','#388E3C','#1B5E20'], borderRadius:4 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ font:{ size:11 } } }, y:{ beginAtZero:true, ticks:{ font:{ size:11 } } } } }
   });
 }
 
@@ -1885,6 +2094,44 @@ function initSettings() {
     {name:'Сейітова Г.',role:'Сарапшы',last:'27.03.2025 14:30'},
     {name:'Нұрланов М.',role:'Сарапшы',last:'26.03.2025 11:00'},
   ].map(u=>`<tr><td style="padding:12px 14px;font-weight:600">${u.name}</td><td style="padding:12px 14px"><span class="badge badge-info">${u.role}</span></td><td style="padding:12px 14px;font-size:12px;color:var(--text-muted)">${u.last}</td><td style="padding:12px 14px"><div class="row-actions" style="opacity:1"><button class="action-btn"><i class="fas fa-edit"></i></button><button class="action-btn danger"><i class="fas fa-trash"></i></button></div></td></tr>`).join('');
+}
+
+function toggleAdaptiveWeights(useAdaptive) {
+  const result = calibrateAdaptiveWeights(AppState.applicants);
+  const panel = document.getElementById('adaptive-weights-panel');
+  const manualPanel = document.getElementById('weight-sliders');
+  if (useAdaptive) {
+    if (!result.success) { showToast('⚠️ ' + result.reason, 'warning'); document.getElementById('weight-mode-manual').checked = true; return; }
+    if (panel) {
+      panel.innerHTML = Object.entries(result.explanations).map(([k,txt]) => {
+        const base = Math.round(result.base[k]*100);
+        const adap = Math.round(result.adaptive[k]*100);
+        const diff = adap - base;
+        const arrow = diff > 0 ? `<span style="color:var(--success)">▲+${diff}%</span>` : diff < 0 ? `<span style="color:var(--danger)">▼${diff}%</span>` : '<span style="color:var(--text-muted)">—</span>';
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:13px;font-weight:600">${txt.split(':')[0]}</span>
+            <span style="font-size:13px">${base}% → <b>${adap}%</b> ${arrow}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted)">${txt.split(':')[1]||''}</div>
+        </div>`;
+      }).join('') + `<button class="btn btn-primary mt-4" onclick="applyAdaptiveWeights()"><i class="fas fa-check"></i> Адаптивті салмақты қолдану</button>`;
+      panel.style.display = 'block';
+    }
+    if (manualPanel) manualPanel.style.opacity = '0.4';
+  } else {
+    if (panel) panel.style.display = 'none';
+    if (manualPanel) manualPanel.style.opacity = '1';
+  }
+}
+
+function applyAdaptiveWeights() {
+  const result = calibrateAdaptiveWeights(AppState.applicants);
+  if (!result.success) { showToast('⚠️ ' + result.reason, 'warning'); return; }
+  localStorage.setItem('agri_weights', JSON.stringify(result.adaptive));
+  AppState.scoringWeights = result.adaptive;
+  showLoading('Адаптивті салмақ қолданылуда...');
+  setTimeout(() => { AppState.recalculateScores(); hideLoading(); showToast('✅ Адаптивті салмақ қолданылды. Скорлар қайта есептелді.', 'success'); initSettings(); }, 800);
 }
 
 function updateWeightTotal() {

@@ -297,6 +297,9 @@ const AppState = {
     });
     this.applicants.sort((a, b) => b.totalScore - a.totalScore);
     this.applicants.forEach((a, i) => a.rank = i + 1);
+    // Run ML pipeline after scoring
+    clusterApplicants(this.applicants);
+    this.applicants.forEach(a => { a.successProb = calcSuccessProbability(a); });
     this.save();
   },
 
@@ -697,6 +700,202 @@ function getStatusBadgeClass(status) {
     'Ұсынылмайды': 'badge-danger',
   };
   return map[status] || 'badge-secondary';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ML PIPELINE — K-MEANS CLUSTERING + SUCCESS PROBABILITY + ADAPTIVE WEIGHTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── K-MEANS CLUSTERING ─────────────────────────────────────────────────────
+
+const CLUSTER_ORDERED_LABELS = [
+  { name: 'Жоғары тиімді',   color: '#1B5E20', badgeClass: 'cluster-high',   icon: '🌟' },
+  { name: 'Тұрақты орташа',  color: '#1565C0', badgeClass: 'cluster-mid',    icon: '📊' },
+  { name: 'Өсу потенциалы',  color: '#E65100', badgeClass: 'cluster-growth', icon: '🌱' },
+  { name: 'Тәуекелді',       color: '#6A1B9A', badgeClass: 'cluster-risk',   icon: '⚠️' },
+];
+
+function _extractMLFeatures(a) {
+  return [
+    (a.totalScore || 0) / 100,
+    Math.min((a.yield || a.productivity || 0) / 60, 1),
+    Math.min((a.landArea || 0) / 800, 1),
+    (a.subsidyUtilization || 0) / 100,
+    Math.min((a.employees || 0) / 40, 1),
+    a.hasPreviousSubsidy ? 1 : 0,
+    a.breakdown?.positiveTrend ? 1 : 0,
+    a.breakdown?.noViolations ? 1 : 0,
+  ];
+}
+
+function _euclidean(a, b) {
+  return Math.sqrt(a.reduce((s, v, i) => s + (v - b[i]) ** 2, 0));
+}
+
+function runKMeans(applicants, k, maxIter) {
+  k = k || 4;
+  maxIter = maxIter || 100;
+  if (applicants.length < k) k = Math.max(1, applicants.length);
+  const features = applicants.map(_extractMLFeatures);
+  const dim = features[0].length;
+
+  // K-means++ initialization
+  const centroids = [[...features[Math.floor(Math.random() * features.length)]]];
+  while (centroids.length < k) {
+    const dists = features.map(f => Math.min.apply(null, centroids.map(c => _euclidean(f, c))));
+    const total = dists.reduce((s, d) => s + d * d, 0);
+    let r = Math.random() * total;
+    let added = false;
+    for (let i = 0; i < features.length; i++) {
+      r -= dists[i] * dists[i];
+      if (r <= 0) { centroids.push([...features[i]]); added = true; break; }
+    }
+    if (!added) centroids.push([...features[features.length - 1]]);
+  }
+
+  let assignments = new Array(applicants.length).fill(0);
+  for (let iter = 0; iter < maxIter; iter++) {
+    const next = features.map(f => {
+      let best = 0, bestD = Infinity;
+      centroids.forEach((c, ci) => { const d = _euclidean(f, c); if (d < bestD) { bestD = d; best = ci; } });
+      return best;
+    });
+    const changed = next.some((v, i) => v !== assignments[i]);
+    assignments = next;
+    if (!changed) break;
+    centroids.forEach((c, ci) => {
+      const members = features.filter((_, i) => assignments[i] === ci);
+      if (!members.length) return;
+      for (let d = 0; d < dim; d++) c[d] = members.reduce((s, f) => s + f[d], 0) / members.length;
+    });
+  }
+  return { assignments, centroids };
+}
+
+function clusterApplicants(applicants, k) {
+  k = k || 4;
+  if (!applicants.length) return;
+  if (applicants.length < k) k = applicants.length;
+
+  const { assignments, centroids } = runKMeans(applicants, k);
+
+  // Order clusters by avg score descending → assign labels in rank order
+  const stats = centroids.map((c, ci) => {
+    const members = applicants.filter((_, i) => assignments[i] === ci);
+    const avgScore = members.length ? members.reduce((s, a) => s + (a.totalScore || 0), 0) / members.length : 0;
+    return { ci, avgScore };
+  });
+  stats.sort((a, b) => b.avgScore - a.avgScore);
+
+  const labelMap = {};
+  stats.forEach((s, rank) => { labelMap[s.ci] = CLUSTER_ORDERED_LABELS[Math.min(rank, 3)]; });
+
+  applicants.forEach((a, i) => {
+    const lbl = labelMap[assignments[i]] || CLUSTER_ORDERED_LABELS[3];
+    a.cluster      = assignments[i];
+    a.clusterLabel = lbl.name;
+    a.clusterColor = lbl.color;
+    a.clusterBadge = lbl.badgeClass;
+    a.clusterIcon  = lbl.icon;
+  });
+}
+
+function getClusterExplanation(a) {
+  if (!a.clusterLabel) return '';
+  const score = a.totalScore || 0;
+  const util  = a.subsidyUtilization || 0;
+  const trend = a.breakdown?.positiveTrend;
+  const land  = a.landArea || 0;
+  if (a.clusterLabel === 'Жоғары тиімді')
+    return `Жоғары балл (${score}), игеру тарихы жақсы (${util}%) және тұрақты өсу тренді. Субсидия үшін ең күшті үміткер.`;
+  if (a.clusterLabel === 'Тұрақты орташа')
+    return `Орташа балл (${score}), тұрақты шаруашылық${trend ? ', өсу тренді бар' : ''}. Потенциалы бар, бірақ кейбір факторлар жетіспейді.`;
+  if (a.clusterLabel === 'Өсу потенциалы')
+    return `Балл қазір төмен (${score}), бірақ жер алаңы (${land} га) немесе қызметкерлер саны жеткілікті. Жақсарту мүмкіндіктері бар.`;
+  return `Тәуекел факторлары анықталды: балл ${score}, аномалия белгілері немесе жетіспейтін деректер. Мұқият тексеру қажет.`;
+}
+
+// ─── SUCCESS PROBABILITY (PROXY LOGISTIC REGRESSION) ────────────────────────
+
+function calcSuccessProbability(applicant) {
+  const score    = (applicant.totalScore || 0) / 100;
+  const util     = (applicant.subsidyUtilization || 0) / 100;
+  const credit   = (applicant.creditScore || 50) / 100;
+  const noViol   = applicant.breakdown?.noViolations ? 1 : 0;
+  const trend    = applicant.breakdown?.positiveTrend ? 1 : 0;
+  const hasPrev  = applicant.hasPreviousSubsidy ? 1 : 0;
+  const noTax    = applicant.breakdown?.noTaxDebt ? 1 : 0;
+  const noLegal  = applicant.breakdown?.noLegalDisputes ? 1 : 0;
+  const costEff  = applicant.breakdown?.costEfficient ? 1 : 0;
+  const aboveAvg = applicant.breakdown?.aboveAvgYield ? 1 : 0;
+
+  // Calibrated sigmoid weights (domain-expert priors)
+  const z = 2.8*score + 1.9*util + 1.1*credit
+          + 0.7*noViol + 0.7*trend + 0.6*hasPrev
+          + 0.5*noTax + 0.4*noLegal + 0.4*costEff + 0.3*aboveAvg
+          - 4.5;
+
+  const p = Math.round(100 / (1 + Math.exp(-z)));
+  const probability = Math.min(Math.max(p, 5), 95);
+  const dq = calcDataQuality(applicant);
+  const confidence = dq.completeness >= 80 ? 'Жоғары' : dq.completeness >= 60 ? 'Орташа' : 'Төмен';
+
+  return {
+    probability,
+    riskProb: 100 - probability,
+    confidence,
+    proxyMode: true,
+    proxyNote: 'Proxy модель — нақты тарихи деректер жоқ кезде скор, тарих және тәуекел белгілеріне негізделген bolжам',
+  };
+}
+
+// ─── ADAPTIVE WEIGHT CALIBRATION ─────────────────────────────────────────────
+
+function calibrateAdaptiveWeights(applicants) {
+  if (!applicants || applicants.length < 5) {
+    return { success: false, reason: 'Жеткіліксіз деректер — минимум 5 өтінім қажет' };
+  }
+  const maxes   = { f1: 25, f2: 30, f3: 20, f4: 15, f5: 10 };
+  const keyMap  = { f1: 'subsidyHistory', f2: 'productivity', f3: 'farmProfile', f4: 'socialEconomic', f5: 'riskAssessment' };
+  const nameMap = { f1: 'Субсидия тарихы', f2: 'Өнімділік', f3: 'Шаруашылық профилі', f4: 'Әлеуметтік-эконом.', f5: 'Тәуекел бағасы' };
+
+  const factorKeys = ['f1','f2','f3','f4','f5'];
+  const variances = {};
+  factorKeys.forEach(k => {
+    const vals = applicants.map(a => (a.factors && a.factors[k] != null ? a.factors[k] : 0) / maxes[k]);
+    const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
+    variances[k] = vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length;
+  });
+
+  const totalVar = Object.values(variances).reduce((s, v) => s + v, 0);
+  if (totalVar < 0.0001) return { success: false, reason: 'Деректер тым бірыңғай — вариативтілік жеткіліксіз' };
+
+  const base = loadWeights();
+  const adaptiveRaw = {};
+  factorKeys.forEach(k => {
+    adaptiveRaw[keyMap[k]] = 0.6 * (variances[k] / totalVar) + 0.4 * base[keyMap[k]];
+  });
+
+  // Normalize to sum = 1
+  const tot = Object.values(adaptiveRaw).reduce((s, v) => s + v, 0);
+  const adaptive = {};
+  Object.entries(adaptiveRaw).forEach(([k, v]) => { adaptive[k] = v / tot; });
+
+  // Human-readable explanations
+  const explanations = {};
+  factorKeys.forEach(k => {
+    const wKey = keyMap[k];
+    const diff = adaptive[wKey] - base[wKey];
+    const varPct = Math.round(variances[k] / totalVar * 100);
+    if (Math.abs(diff) < 0.01)
+      explanations[wKey] = `${nameMap[k]}: деректерде базалық үлеспен сəйкес (вариация ${varPct}%)`;
+    else if (diff > 0)
+      explanations[wKey] = `${nameMap[k]}: деректерде жоғары вариативтілік (${varPct}%) → үлес өсті +${Math.round(diff*100)}%`;
+    else
+      explanations[wKey] = `${nameMap[k]}: деректерде төмен вариативтілік (${varPct}%) → үлес кемді ${Math.round(diff*100)}%`;
+  });
+
+  return { success: true, adaptive, base, explanations, variances };
 }
 
 // ─── DOCUMENT TYPES ─────────────────────────────────────────────────────────

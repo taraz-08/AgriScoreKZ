@@ -1709,6 +1709,17 @@ tbody tr:hover .row-actions { opacity: 1; }
 .rec-text { font-size: 13px; margin-bottom: 16px; }
 .rec-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
+/* ── ML CLUSTER BADGES ──────────────────────────────────────────── */
+.cluster-high   { background:#E8F5E9; color:#1B5E20; border:1px solid #A5D6A7; }
+.cluster-mid    { background:#E3F2FD; color:#1565C0; border:1px solid #90CAF9; }
+.cluster-growth { background:#FFF3E0; color:#E65100; border:1px solid #FFCC80; }
+.cluster-risk   { background:#F3E5F5; color:#6A1B9A; border:1px solid #CE93D8; }
+
+.dark-mode .cluster-high   { background:#1B5E2022; color:#81C784; border-color:#1B5E2055; }
+.dark-mode .cluster-mid    { background:#1565C022; color:#64B5F6; border-color:#1565C055; }
+.dark-mode .cluster-growth { background:#E6510022; color:#FFB74D; border-color:#E6510055; }
+.dark-mode .cluster-risk   { background:#6A1B9A22; color:#CE93D8; border-color:#6A1B9A55; }
+
 /* Sticky tabs */
 .sticky-tabs {
   position: sticky; top: var(--navbar-h);

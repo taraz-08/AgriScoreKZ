@@ -96,7 +96,6 @@
 
   <!-- NAVBAR -->
   <nav id="top-navbar">
-    <button id="hamburger-btn" class="navbar-hamburger"><i class="fas fa-bars"></i></button>
     <span class="navbar-logo">🌾</span>
     <span class="navbar-title" id="navbar-title">Басқару тақтасы</span>
     <div class="navbar-right">
@@ -142,7 +141,7 @@
         <span>AgriScore KZ</span>
       </div>
       <button class="sidebar-collapse-btn" onclick="toggleSidebar()">
-        <i class="fas fa-chevron-left"></i>
+        <i class="fas fa-bars"></i>
       </button>
     </div>
     <nav class="sidebar-nav">
@@ -209,6 +208,18 @@
           <div class="kpi-label" data-i18n="dashBudget">Сұралған қаражат</div>
           <div class="kpi-change neutral">Бюджет: 6.1 млрд ₸</div>
         </div>
+        <div class="kpi-card" style="border-left-color:#7B1FA2">
+          <div class="kpi-card-header"><div class="kpi-icon">📈</div></div>
+          <div class="kpi-number" id="kpi-avg-prob">0<span style="font-size:18px">%</span></div>
+          <div class="kpi-label">Орт. сәтті игеру</div>
+          <div class="kpi-badge" style="background:#EDE7F6;color:#7B1FA2;font-size:11px;padding:2px 8px;border-radius:10px;display:inline-block;margin-top:4px">Proxy ML модель</div>
+        </div>
+        <div class="kpi-card" style="border-left-color:#E65100">
+          <div class="kpi-card-header"><div class="kpi-icon">⚠️</div></div>
+          <div class="kpi-number" id="kpi-anomaly">0</div>
+          <div class="kpi-label">Аномалия белгілері</div>
+          <div class="kpi-change down">Жоғары/Орташа тәуекел</div>
+        </div>
       </div>
       <div class="dashboard-grid">
         <div class="card">
@@ -230,6 +241,8 @@
           <div class="card-header"><span class="card-title" data-i18n="dashRegionDist">Облыстар бойынша</span></div>
           <div class="chart-wrapper"><canvas id="dash-donut-chart"></canvas></div>
           <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px" id="dash-progress-bars"></div>
+          <div class="card-header mt-4 mb-2"><span class="card-title">🤖 ML Кластерлер</span></div>
+          <div id="dash-cluster-dist"></div>
         </div>
       </div>
     </section>
@@ -277,6 +290,18 @@
               <option>Ұсынылды</option><option>Қаралуда</option><option>Тексеруде</option><option>Ұсынылмайды</option>
             </select>
           </div>
+          <div class="filter-item">
+            <select id="filter-cluster" class="form-select">
+              <option value="">Кластер</option>
+              <option>Жоғары тиімді</option><option>Тұрақты орташа</option><option>Өсу потенциалы</option><option>Тәуекелді</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <select id="filter-anomaly" class="form-select">
+              <option value="">Аномалия</option>
+              <option value="high">Жоғары тәуекел</option><option value="any">Кез-келген аномалия</option>
+            </select>
+          </div>
           <button class="btn btn-ghost btn-sm" onclick="resetApplicantFilters()"><i class="fas fa-times"></i> Тазарту</button>
         </div>
         <div style="margin-top:6px;display:flex;gap:8px;align-items:center">
@@ -290,21 +315,23 @@
         <button class="btn btn-ghost btn-sm" onclick="clearBulkSelection()">Болдырмау</button>
       </div>
       <div class="table-wrapper">
-        <table id="applicants-table">
+        <table id="applicants-table" style="font-size:12px">
           <thead>
             <tr>
-              <th style="width:36px"><input type="checkbox" id="select-all-cb" style="accent-color:var(--primary);cursor:pointer"></th>
-              <th>#</th>
-              <th data-sort="iin" class="sortable">ЖСН</th>
+              <th style="width:32px;padding:8px 4px"><input type="checkbox" id="select-all-cb" style="accent-color:var(--primary);cursor:pointer"></th>
+              <th style="width:28px;padding:8px 4px">#</th>
+              <th style="width:110px" data-sort="iin" class="sortable">ЖСН</th>
               <th data-sort="name" class="sortable">Атауы</th>
-              <th data-sort="district" class="sortable">Аудан / Облыс</th>
-              <th data-sort="productionType" class="sortable">Өндіріс</th>
-              <th data-sort="landArea" class="sortable">Алаң</th>
-              <th data-sort="totalScore" class="sortable sort-desc">Балл ↕</th>
-              <th>Тәуекел</th>
-              <th data-sort="recommendation" class="sortable">Мәртебе</th>
-              <th data-sort="applicationDate" class="sortable">Күні</th>
-              <th>Әрекет</th>
+              <th style="width:120px" data-sort="district" class="sortable">Аудан / Облыс</th>
+              <th style="width:90px" data-sort="productionType" class="sortable">Өндіріс</th>
+              <th style="width:60px" data-sort="landArea" class="sortable">Алаң</th>
+              <th style="width:56px" data-sort="totalScore" class="sortable sort-desc">Балл ↕</th>
+              <th style="width:120px">Кластер</th>
+              <th style="width:68px">Ықтим.</th>
+              <th style="width:72px">Тәуекел</th>
+              <th style="width:90px" data-sort="recommendation" class="sortable">Мәртебе</th>
+              <th style="width:82px" data-sort="applicationDate" class="sortable">Күні</th>
+              <th style="width:80px">Әрекет</th>
             </tr>
           </thead>
           <tbody id="applicants-tbody">
@@ -478,6 +505,8 @@
         <div class="card"><div class="card-header"><span class="card-title">Субсидия түрлері</span></div><div class="chart-wrapper-tall"><canvas id="type-chart"></canvas></div></div>
         <div class="card"><div class="card-header"><span class="card-title">3 жылдық динамика</span></div><div class="chart-wrapper-tall"><canvas id="trend-chart"></canvas></div></div>
         <div class="card"><div class="card-header"><span class="card-title">Алаң vs Өнімділік</span></div><div class="chart-wrapper-tall"><canvas id="scatter-chart"></canvas></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">🤖 ML Кластер бөлінісі</span><span class="badge" style="background:#EDE7F6;color:#7B1FA2;font-size:11px">K-means</span></div><div class="chart-wrapper-tall"><canvas id="cluster-chart"></canvas></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">📈 Сәтті игеру ықтималдығы</span><span class="badge" style="background:#E8F5E9;color:#1B5E20;font-size:11px">Proxy LR</span></div><div class="chart-wrapper-tall"><canvas id="probability-chart"></canvas></div></div>
       </div>
     </section>
 
@@ -538,7 +567,6 @@
       <div class="tabs mb-4">
         <button class="tab-btn active" data-tab="settings-general">Жалпы</button>
         <button class="tab-btn" data-tab="settings-scoring">Скоринг</button>
-        <button class="tab-btn" data-tab="settings-api">API / Gemini</button>
         <button class="tab-btn" data-tab="settings-users">Пайдаланушылар</button>
       </div>
 
@@ -566,11 +594,16 @@
             <button class="btn btn-outline-danger btn-sm" onclick="clearAllData()"><i class="fas fa-trash"></i> Тазарту</button>
           </div>
           <div class="settings-section">
+            <h3><i class="fas fa-robot"></i> AI статусы</h3>
+            <div id="api-key-status" style="margin-bottom:10px"></div>
+            <button class="btn btn-outline btn-sm" id="test-api-btn" onclick="testAPIKey()"><i class="fas fa-wifi"></i> Байланысты тексеру</button>
+          </div>
+          <div class="settings-section">
             <h3><i class="fas fa-info-circle"></i> Жүйе туралы</h3>
             <div style="font-size:13px;color:var(--text-muted);line-height:1.8">
               <div>Нұсқа: <b>1.0.0</b></div>
               <div>Деректер: <b>LocalStorage</b></div>
-              <div>AI: <b>Google Gemini 2.0 Flash</b></div>
+              <div>AI: <b>Google Gemini 2.5 Flash</b></div>
             </div>
           </div>
         </div>
@@ -581,6 +614,16 @@
         <div class="settings-grid">
           <div class="settings-section" style="grid-column:1/-1">
             <h3><i class="fas fa-sliders-h"></i> Фактор үлестері</h3>
+            <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+              <span style="font-size:13px;font-weight:600;flex:1">Салмақ режимі:</span>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+                <input type="radio" name="weight-mode" id="weight-mode-manual" value="manual" checked onchange="toggleAdaptiveWeights(false)"> Қолмен
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+                <input type="radio" name="weight-mode" id="weight-mode-adaptive" value="adaptive" onchange="toggleAdaptiveWeights(true)"> 🤖 Адаптивті (ML)
+              </label>
+            </div>
+            <div id="adaptive-weights-panel" style="display:none;margin-bottom:16px;padding:14px;background:var(--bg);border-radius:8px;border:1px solid #7B1FA2"></div>
             <div id="weight-sliders"></div>
             <div class="weight-total" id="weight-total-wrap">
               <span>Жиыны:</span><span id="weight-total">100%</span>
@@ -590,34 +633,6 @@
               <input type="range" class="form-range" id="scoring-threshold" min="0" max="100" value="65" oninput="document.getElementById('threshold-val').textContent=this.value">
             </div>
             <button class="btn btn-primary mt-4" onclick="saveAndRecalculate()"><i class="fas fa-save"></i> Сақтау + қайта есептеу</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- API -->
-      <div class="tab-content" id="settings-api">
-        <div class="settings-grid">
-          <div class="settings-section" style="grid-column:1/-1">
-            <h3><i class="fas fa-robot"></i> Google Gemini API</h3>
-            <div class="form-group">
-              <label class="form-label">API кілті күйі</label>
-              <div class="input-group">
-                <input type="password" id="gemini-api-key" class="form-control" placeholder="Жүктелуде..." disabled>
-                <span class="input-group-icon" style="cursor:default"><i class="fas fa-lock" id="api-key-eye"></i></span>
-              </div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
-                🔒 API кілті қауіпсіздік үшін <code style="background:var(--bg);padding:1px 4px;border-radius:3px">.env</code> файлында сақталады (frontend-те көрінбейді)
-              </div>
-            </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-              <button class="btn btn-primary" onclick="saveAPIKey()"><i class="fas fa-info-circle"></i> Қалай орнату?</button>
-              <button class="btn btn-outline" id="test-api-btn" onclick="testAPIKey()"><i class="fas fa-wifi"></i> Тексеру</button>
-            </div>
-            <div class="alert alert-warning mt-4" style="font-size:12px">
-              <i class="fas fa-info-circle alert-icon"></i>
-              <div>API кілті болмаса, AI функциялары demo режимде жауап береді. Кілтті <b>.env</b> файлына қосыңыз: <code>GEMINI_API_KEY=AIza...</code></div>
-            </div>
-            <div id="api-key-status" style="margin-top:8px"></div>
           </div>
         </div>
       </div>
