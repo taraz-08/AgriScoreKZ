@@ -33,6 +33,9 @@ const https = require('https');
 
 const PORT        = parseInt(process.env.PORT || '3000', 10);
 const GEMINI_KEY  = process.env.GEMINI_API_KEY || '';
+const ALEM_KEY    = process.env.ALEM_API_KEY   || '';
+const ALEM_URL    = process.env.ALEM_API_URL   || 'https://llm.alem.ai/v1/chat/completions';
+const ALEM_MODEL  = process.env.ALEM_MODEL     || 'alemllm';
 const APP_DIR     = path.join(__dirname, 'app');
 
 // ─── ПАЙДАЛАНУШЫЛАР ─────────────────────────────────────────────────────────
@@ -91,7 +94,57 @@ function json(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-// Gemini API-ге https сұрау жіберу
+// Alem LLM API-ге сұрау (OpenAI формат)
+// Frontend Gemini форматын жібереді → OpenAI-ге конвертация → Gemini форматына қайтарамыз
+function proxyAlem(geminiBody) {
+  return new Promise((resolve, reject) => {
+    // Gemini → OpenAI конвертация
+    const text = geminiBody?.contents?.[0]?.parts?.[0]?.text || '';
+    const openAIBody = JSON.stringify({
+      model:    ALEM_MODEL,
+      messages: [{ role: 'user', content: text }]
+    });
+
+    const urlObj = new URL(ALEM_URL);
+    const options = {
+      hostname: urlObj.hostname,
+      path:     urlObj.pathname + urlObj.search,
+      method:   'POST',
+      headers:  {
+        'Content-Type':   'application/json',
+        'Authorization':  `Bearer ${ALEM_KEY}`,
+        'Content-Length': Buffer.byteLength(openAIBody)
+      }
+    };
+
+    const req = https.request(options, (apiRes) => {
+      let data = '';
+      apiRes.on('data', chunk => { data += chunk; });
+      apiRes.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (apiRes.statusCode !== 200) {
+            resolve({ status: apiRes.statusCode, body: { error: { message: parsed?.error?.message || 'Alem API қатесі' } } });
+            return;
+          }
+          // OpenAI → Gemini форматы конвертация (frontend өзгертусіз жұмыс жасайды)
+          const content = parsed?.choices?.[0]?.message?.content || '';
+          resolve({
+            status: 200,
+            body: { candidates: [{ content: { parts: [{ text: content }] } }] }
+          });
+        } catch {
+          resolve({ status: 500, body: { error: { message: 'JSON parse error' } } });
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(openAIBody);
+    req.end();
+  });
+}
+
+// Gemini API-ге https сұрау жіберу (запасной)
 function proxyGemini(body) {
   return new Promise((resolve, reject) => {
     const postData = JSON.stringify(body);
@@ -155,14 +208,22 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // ── API: Gemini Proxy ───────────────────────────────────────────────────────
+  // ── API: AI Proxy (Alem приоритет, Gemini запасной) ────────────────────────
   if (url.pathname === '/api/gemini' && req.method === 'POST') {
-    // Кілт .env-де орнатылмаған → demo режим
-    if (!GEMINI_KEY) {
+    if (!ALEM_KEY && !GEMINI_KEY) {
       return json(res, 200, { demo: true });
     }
     const body = await readBody(req);
     try {
+      // Alem LLM — приоритет
+      if (ALEM_KEY) {
+        const result = await proxyAlem(body);
+        if (result.status !== 200) {
+          return json(res, result.status, { error: result.body?.error || { message: 'Alem API қатесі' } });
+        }
+        return json(res, 200, result.body);
+      }
+      // Gemini — запасной
       const result = await proxyGemini(body);
       if (result.status !== 200) {
         return json(res, result.status, { error: result.body?.error || { message: 'API қатесі' } });
@@ -173,9 +234,9 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // ── API: Check Gemini status ────────────────────────────────────────────────
+  // ── API: Check AI status ────────────────────────────────────────────────────
   if (url.pathname === '/api/gemini-status' && req.method === 'GET') {
-    return json(res, 200, { hasKey: !!GEMINI_KEY });
+    return json(res, 200, { hasKey: !!(ALEM_KEY || GEMINI_KEY), provider: ALEM_KEY ? 'alem' : GEMINI_KEY ? 'gemini' : 'none' });
   }
 
   // ── Static files ────────────────────────────────────────────────────────────
@@ -199,7 +260,7 @@ server.listen(PORT, () => {
   console.log('  🌾  AgriScore KZ — Сервер іске қосылды');
   console.log('═'.repeat(50));
   console.log(`  📡  http://localhost:${PORT}`);
-  console.log(`  🔑  Gemini API: ${GEMINI_KEY ? '✅ Орнатылды (.env)' : '⚠️  Demo режим (GEMINI_API_KEY бос)'}`);
+  console.log(`  🤖  AI Provider: ${ALEM_KEY ? '✅ Alem LLM (alemllm)' : GEMINI_KEY ? '✅ Google Gemini 2.5 Flash' : '⚠️  Demo режим (API кілт жоқ)'}`);
   console.log('');
   console.log('  👤  Тіркелгілер (.env файлынан):');
   USERS.forEach(u => {
