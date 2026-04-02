@@ -882,6 +882,52 @@ function renderScoringTab(a) {
         </div>
       </div>`;
     })()}
+    ${(function(){
+      // Hybrid score breakdown
+      const hyb = a.hybridComponents;
+      if (!hyb) return '';
+      const hScore = a.hybridScore || a.totalScore;
+      const hColor = getScoreColor(hScore);
+      const comps = [
+        { label:'Business Rules', pct: Math.round(hyb.business.weight*100)+'%', score: hyb.business.score, weighted: hyb.business.weighted, color:'#1B5E20' },
+        { label:'ML (Logistic)',  pct: Math.round(hyb.ml.weight*100)+'%',       score: hyb.ml.score,       weighted: hyb.ml.weighted,       color:'#1565C0' },
+        { label:'Risk Score',     pct: Math.round(hyb.risk.weight*100)+'%',     score: hyb.risk.score,     weighted: hyb.risk.weighted,     color:'#E65100' },
+      ];
+      const shapData = calcSHAPExplanation(a, AppState.applicants);
+      return `
+      <div class="card mb-4" style="padding:16px;border-top:3px solid ${hColor}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div>
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted)">🔀 Гибридті финалды скор</div>
+            <div style="font-size:24px;font-weight:900;color:${hColor}">${hScore}<span style="font-size:14px;font-weight:400;color:var(--text-muted)">/100</span></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);text-align:right">50% ML · 30% ережелер · 20% тәуекел${hyb.cluster.bonus!==0?`<br>Кластер бонус: <b style="color:${hyb.cluster.bonus>0?'var(--success)':'var(--danger)'}">${hyb.cluster.bonus>0?'+':''}${hyb.cluster.bonus}</b>`:''}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+          ${comps.map(c=>`
+          <div style="padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">${c.label} <b>${c.pct}</b></div>
+            <div style="font-size:16px;font-weight:700;color:${c.color}">${c.weighted}<span style="font-size:10px;font-weight:400;color:var(--text-muted)">pts</span></div>
+            <div style="height:4px;background:var(--border);border-radius:2px;margin-top:6px"><div style="height:100%;width:${c.score}%;background:${c.color};border-radius:2px"></div></div>
+          </div>`).join('')}
+        </div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">📊 SHAP — Факторлар ықпалы (орташаға қарағанда)</div>
+        ${shapData.contributions.map(c=>{
+          const barW = Math.min(Math.abs(c.contribution)/5*100, 100);
+          const col = c.direction==='positive'?'var(--success)':c.direction==='negative'?'var(--danger)':'var(--text-muted)';
+          const sign = c.contribution>0?'+':'';
+          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="width:160px;font-size:11px;flex-shrink:0">${c.name}</span>
+            <div style="flex:1;height:14px;background:var(--bg);border-radius:3px;border:1px solid var(--border);overflow:hidden">
+              <div style="height:100%;width:${barW}%;background:${col};opacity:0.8;border-radius:3px"></div>
+            </div>
+            <span style="width:42px;text-align:right;font-size:11px;font-weight:700;color:${col}">${sign}${c.contribution.toFixed(1)}</span>
+            <span style="width:28px;text-align:right;font-size:10px;color:var(--text-muted)">${c.actual}/${c.max}</span>
+          </div>`;
+        }).join('')}
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:10px;padding:8px;background:var(--bg);border-radius:6px;line-height:1.6">${shapData.summary}</div>
+      </div>`;
+    })()}
     <div class="factors-grid" id="factors-grid-detail">
       ${factors.map((f,fi) => `
         <div class="factor-card">
@@ -1189,7 +1235,7 @@ function renderCommentsTab(a) {
 function renderRiskTab(a) {
   const el = document.getElementById('risk-tab-content');
   if (!el) return;
-  const an = detectAnomalies(a);
+  const an = detectAnomaliesEnhanced(a, AppState.applicants);
   const dq = calcDataQuality(a);
 
   const riskColors = { 'Жоқ':'var(--success)', 'Төмен':'var(--success)', 'Орташа':'var(--warning)', 'Жоғары':'var(--danger)' };
@@ -2225,10 +2271,26 @@ function formatDate(d) {
   return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
 }
 
+// ─── SERVER SYNC ─────────────────────────────────────────────────────────────
+function syncToServer() {
+  const user = JSON.parse(localStorage.getItem('agri_user') || '{}');
+  fetch('/api/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-user': JSON.stringify(user) },
+    body: JSON.stringify({
+      applicants: AppState.applicants,
+      shortlist:  AppState.shortlist,
+      reviews:    AppState.commissionReviews,
+    })
+  }).catch(() => {});
+}
+
 // ─── INIT ────────────────────────────────────────────────────────────────────
 function initApp() {
   // Load data
   AppState.load();
+  // Sync to server (fire-and-forget)
+  syncToServer();
 
   // Theme
   if (localStorage.getItem('agri_theme') === 'dark') document.body.classList.add('dark-mode');

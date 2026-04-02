@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+
+<html class="light" lang="kk"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AgriScore KZ - Өтінімдер тізімі</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-tint": "#2a6b2c",
+                        "surface-container-highest": "#e1e3e1",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#ffddb5",
+                        "outline": "#717a6d",
+                        "surface-bright": "#f8faf8",
+                        "surface-container": "#eceeec",
+                        "surface-variant": "#e1e3e1",
+                        "outline-variant": "#c0c9bb",
+                        "on-surface-variant": "#41493e",
+                        "on-primary-fixed": "#002203",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#a0f399",
+                        "inverse-surface": "#2e3130",
+                        "tertiary": "#533400",
+                        "on-secondary-container": "#217128",
+                        "secondary-fixed": "#a3f69c",
+                        "secondary": "#1b6d24",
+                        "surface": "#f8faf8",
+                        "inverse-on-surface": "#eff1ef",
+                        "surface-container-low": "#f2f4f2",
+                        "background": "#f8faf8",
+                        "on-primary-container": "#90d689",
+                        "on-secondary-fixed-variant": "#005312",
+                        "on-background": "#191c1b",
+                        "on-secondary-fixed": "#002204",
+                        "on-surface": "#191c1b",
+                        "primary-container": "#1b5e20",
+                        "on-secondary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#acf4a4",
+                        "surface-container-high": "#e6e9e7",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#643f00",
+                        "surface-dim": "#d8dad9",
+                        "on-tertiary-fixed": "#2a1800",
+                        "secondary-fixed-dim": "#88d982",
+                        "primary-fixed-dim": "#91d78a",
+                        "primary": "#00450d",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#724900",
+                        "on-primary-fixed-variant": "#0c5216",
+                        "on-tertiary-container": "#ffb751",
+                        "inverse-primary": "#91d78a",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#ffb957"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .precision-data { font-family: 'JetBrains Mono', monospace; }
+        .glass-nav { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex">
+<!-- SideNavBar -->
+<aside class="h-screen w-[260px] hidden md:flex flex-col sticky left-0 top-0 bg-emerald-900 dark:bg-emerald-950 py-6 shrink-0 z-50">
+<div class="px-6 mb-10 flex items-center gap-3">
+<div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-emerald-900" style="font-variation-settings: 'FILL' 1;">agriculture</span>
+</div>
+<div>
+<h1 class="text-white font-black text-lg tracking-tight">AgriScore KZ</h1>
+<p class="text-emerald-200/60 text-[10px] uppercase tracking-widest font-bold">Management Portal</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="text-emerald-100/70 hover:text-white px-4 py-3 mx-2 flex items-center gap-3 font-['Inter'] uppercase tracking-widest text-xs font-bold transition-all hover:bg-emerald-800/50" href="#">
+<span class="material-symbols-outlined">dashboard</span> НЕГІЗГІ
+            </a>
+<a class="bg-emerald-800 text-white rounded-lg mx-2 my-1 px-4 py-3 flex items-center gap-3 font-['Inter'] uppercase tracking-widest text-xs font-bold transition-all" href="#">
+<span class="material-symbols-outlined">analytics</span> ТАЛДАУ
+            </a>
+<a class="text-emerald-100/70 hover:text-white px-4 py-3 mx-2 flex items-center gap-3 font-['Inter'] uppercase tracking-widest text-xs font-bold transition-all hover:bg-emerald-800/50" href="#">
+<span class="material-symbols-outlined">account_balance</span> БАСҚАРУ
+            </a>
+<a class="text-emerald-100/70 hover:text-white px-4 py-3 mx-2 flex items-center gap-3 font-['Inter'] uppercase tracking-widest text-xs font-bold transition-all hover:bg-emerald-800/50" href="#">
+<span class="material-symbols-outlined">settings</span> ЖҮЙЕ
+            </a>
+</nav>
+<div class="px-4 mt-auto">
+<button class="w-full bg-primary-fixed text-on-primary-fixed font-bold py-3 rounded-lg flex items-center justify-center gap-2 mb-6 hover:bg-secondary-fixed transition-colors">
+<span class="material-symbols-outlined">download</span> Export Report
+            </button>
+<div class="border-t border-emerald-800 pt-4">
+<a class="text-emerald-100/70 hover:text-white px-4 py-2 flex items-center gap-3 text-xs font-bold uppercase tracking-widest transition-all" href="#">
+<span class="material-symbols-outlined">help</span> Help
+                </a>
+<a class="text-emerald-100/70 hover:text-white px-4 py-2 flex items-center gap-3 text-xs font-bold uppercase tracking-widest transition-all" href="#">
+<span class="material-symbols-outlined">logout</span> Logout
+                </a>
+</div>
+</div>
+</aside>
+<div class="flex-1 flex flex-col min-w-0">
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 left-0 md:left-[260px] h-16 z-40 bg-white/80 backdrop-blur-xl flex items-center justify-between px-6 shadow-[0px_20px_40px_rgba(25,28,27,0.06)]">
+<div class="flex items-center gap-4">
+<button class="md:hidden text-emerald-900">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="hidden sm:flex items-center gap-4">
+<a class="text-emerald-700 font-bold border-b-2 border-emerald-700 px-1 py-4 text-sm font-medium" href="#">Қазақша</a>
+<a class="text-slate-500 hover:text-emerald-900 px-1 py-4 text-sm font-medium transition-colors" href="#">Русский</a>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="p-2 text-emerald-900 hover:bg-emerald-50/50 rounded-full transition-colors active:scale-90">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-emerald-900 hover:bg-emerald-50/50 rounded-full transition-colors active:scale-90">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant/30 mx-2"></div>
+<div class="flex items-center gap-3 pl-2">
+<div class="text-right hidden sm:block">
+<p class="text-xs font-bold text-emerald-900 leading-none">Админ А. А.</p>
+<p class="text-[10px] text-slate-500">Министрлік өкілі</p>
+</div>
+<img alt="User avatar" class="w-10 h-10 rounded-full object-cover ring-2 ring-primary-fixed" data-alt="professional headshot of a middle-aged man in business attire, clean background, warm studio lighting, high resolution" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGWn1QUhjaGXumjDyxIT-1le9rTKI-vIU5GHjQyXfxPZQQhdiB8kBUQukq3rCeULCGYlmE3Uzfo1HXcsTkAk7bzRUC_VG7FevF1MnWx3FvdCsyNt6tcKFfHVaXXeS4hWBnWtRbAbEgJ--uRDnZmNo5lnzSr7FSEZMNkU77bwd-xkGeUbq65QuM3Tq6gzElwgVNfIDombQlxoP3Zfbt_S8rJU096jA-O_HuIBdtRbgqjLZgEySvjldGOKikEPLy6e6cE7byAWXadI46"/>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="mt-16 p-8 pb-24 md:pb-8 flex-1 overflow-y-auto">
+<!-- Header Section -->
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10">
+<div>
+<h2 class="text-4xl font-extrabold text-on-background tracking-tighter mb-4">Өтінімдер тізімі</h2>
+<div class="flex flex-wrap gap-4">
+<div class="bg-surface-container-low px-4 py-2 rounded-xl flex items-center gap-3">
+<span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60">Жалпы</span>
+<span class="precision-data text-lg font-bold text-emerald-900">2,847</span>
+</div>
+<div class="bg-surface-container-low px-4 py-2 rounded-xl flex items-center gap-3">
+<span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60">Сүзілген</span>
+<span class="precision-data text-lg font-bold text-emerald-900">2,847</span>
+</div>
+<div class="bg-surface-container-low px-4 py-2 rounded-xl flex items-center gap-3 border-2 border-emerald-500/20">
+<span class="text-xs font-bold uppercase tracking-widest text-emerald-700">Таңдалған</span>
+<span class="precision-data text-lg font-bold text-emerald-700">0</span>
+</div>
+</div>
+</div>
+<div class="flex flex-wrap gap-3">
+<button class="bg-surface-container-low text-primary font-bold px-6 py-3 rounded-lg flex items-center gap-2 hover:bg-surface-container-high transition-all active:scale-95">
+<span class="material-symbols-outlined text-xl">file_download</span> Excel-ге жүктеу
+                    </button>
+<button class="bg-primary text-white font-bold px-6 py-3 rounded-lg flex items-center gap-2 hover:bg-emerald-800 transition-all shadow-lg shadow-emerald-900/10 active:scale-95">
+<span class="material-symbols-outlined text-xl">rocket_launch</span> Скорингті іске қосу
+                    </button>
+<button class="bg-secondary text-white font-bold px-6 py-3 rounded-lg flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-700/10 active:scale-95">
+<span class="material-symbols-outlined text-xl">add_circle</span> Жаңа өтінім
+                    </button>
+</div>
+</div>
+<!-- Filter Bar -->
+<section class="bg-surface-container-lowest rounded-2xl p-6 mb-8 shadow-[0px_20px_40px_rgba(25,28,27,0.04)]">
+<div class="flex flex-col md:flex-row gap-4">
+<div class="flex-1 relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-12 pr-4 py-3 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 placeholder:text-outline-variant" placeholder="ЖСН, атауы, БИН бойынша іздеу..." type="text"/>
+</div>
+<button class="flex items-center justify-between px-6 py-3 bg-surface-container-low rounded-xl font-bold text-on-surface-variant min-w-[200px] hover:bg-surface-container-high transition-colors">
+                        Кеңейтілген сүзгі
+                        <span class="material-symbols-outlined">expand_more</span>
+</button>
+</div>
+<!-- Expanded Filters (Grid representation) -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mt-6">
+<div class="space-y-1.5">
+<label class="text-[10px] uppercase tracking-widest font-black text-outline">Облыс</label>
+<select class="w-full bg-surface-container-low border-none rounded-lg text-sm font-medium py-2 focus:ring-2 focus:ring-primary/20">
+<option>Барлығы</option>
+<option>Алматы облысы</option>
+<option>Ақмола облысы</option>
+</select>
+</div>
+<div class="space-y-1.5">
+<label class="text-[10px] uppercase tracking-widest font-black text-outline">Аудан</label>
+<select class="w-full bg-surface-container-low border-none rounded-lg text-sm font-medium py-2 focus:ring-2 focus:ring-primary/20">
+<option>Барлығы</option>
+<option>Іле ауданы</option>
+</select>
+</div>
+<div class="space-y-1.5">
+<label class="text-[10px] uppercase tracking-widest font-black text-outline">Өндіріс түрі</label>
+<select class="w-full bg-surface-container-low border-none rounded-lg text-sm font-medium py-2 focus:ring-2 focus:ring-primary/20">
+<option>Барлығы</option>
+<option>Егіншілік</option>
+<option>Мал шаруашылығы</option>
+</select>
+</div>
+<div class="space-y-1.5">
+<label class="text-[10px] uppercase tracking-widest font-black text-outline">Скор диапазоны</label>
+<div class="flex items-center gap-2">
+<input class="w-full bg-surface-container-low border-none rounded-lg text-xs py-2 px-3 focus:ring-2 focus:ring-primary/20" placeholder="0" type="text"/>
+<span class="text-outline text-xs">-</span>
+<input class="w-full bg-surface-container-low border-none rounded-lg text-xs py-2 px-3 focus:ring-2 focus:ring-primary/20" placeholder="100" type="text"/>
+</div>
+</div>
+<div class="space-y-1.5">
+<label class="text-[10px] uppercase tracking-widest font-black text-outline">Мәртебе</label>
+<select class="w-full bg-surface-container-low border-none rounded-lg text-sm font-medium py-2 focus:ring-2 focus:ring-primary/20">
+<option>Барлығы</option>
+<option>Ұсынылды</option>
+<option>Қабылданбады</option>
+</select>
+</div>
+<div class="space-y-1.5">
+<label class="text-[10px] uppercase tracking-widest font-black text-outline">Күні</label>
+<input class="w-full bg-surface-container-low border-none rounded-lg text-xs font-medium py-2 focus:ring-2 focus:ring-primary/20" type="date"/>
+</div>
+</div>
+</section>
+<!-- Table Card -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-[0px_20px_40px_rgba(25,28,27,0.04)] overflow-hidden">
+<div class="overflow-x-auto no-scrollbar">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low/50 border-b border-outline-variant/10">
+<th class="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-outline">
+<input class="rounded text-primary focus:ring-primary border-outline-variant/50" type="checkbox"/>
+</th>
+<th class="px-3 py-5 text-[10px] font-black uppercase tracking-widest text-outline">#</th>
+<th class="px-4 py-5 text-[10px] font-black uppercase tracking-widest text-outline">ЖСН</th>
+<th class="px-4 py-5 text-[10px] font-black uppercase tracking-widest text-outline">Өтінішкер атауы</th>
+<th class="px-4 py-5 text-[10px] font-black uppercase tracking-widest text-outline">Аудан</th>
+<th class="px-4 py-5 text-[10px] font-black uppercase tracking-widest text-outline">Өндіріс түрі</th>
+<th class="px-4 py-5 text-[10px] font-black uppercase tracking-widest text-outline">Алаң (га)</th>
+<th class="px-4 py-5 text-[10px] font-black uppercase tracking-widest text-outline cursor-pointer group">
+<div class="flex items-center gap-1">
+                                        Скор <span class="material-symbols-outlined text-xs text-primary">arrow_downward</span>
+</div>
+</th>
+<th class="px-4 py-5 text-[10px] font-black uppercase tracking-widest text-outline">Тәуекел</th>
+<th class="px-4 py-5 text-[10px] font-black uppercase tracking-widest text-outline">Мәртебе</th>
+<th class="px-4 py-5 text-[10px] font-black uppercase tracking-widest text-outline">Күні</th>
+<th class="px-4 py-5 text-[10px] font-black uppercase tracking-widest text-outline text-right">Әрекеттер</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<!-- Sample Row 1 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors">
+<td class="px-6 py-4"><input class="rounded text-primary focus:ring-primary border-outline-variant/50" type="checkbox"/></td>
+<td class="px-3 py-4 precision-data text-xs font-bold text-outline">1</td>
+<td class="px-4 py-4 precision-data text-xs">850612350174</td>
+<td class="px-4 py-4 text-sm font-bold text-on-surface">Бауыржан Ерғалиев</td>
+<td class="px-4 py-4 text-sm text-on-surface-variant">Алматы/Іле</td>
+<td class="px-4 py-4 text-xs font-bold text-on-surface-variant uppercase">Егіншілік</td>
+<td class="px-4 py-4 precision-data text-sm">450 га</td>
+<td class="px-4 py-4">
+<span class="bg-primary-fixed text-on-primary-fixed-variant px-3 py-1 rounded-full text-xs font-bold precision-data">92</span>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+<span class="text-xs font-bold text-emerald-700">Төмен</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ring-1 ring-emerald-100">
+<span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                                        Ұсынылды
+                                    </span>
+</td>
+<td class="px-4 py-4 precision-data text-xs">12.08.2025</td>
+<td class="px-4 py-4 text-right">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 hover:bg-emerald-50 rounded-lg text-emerald-900 transition-colors"><span class="material-symbols-outlined text-xl">visibility</span></button>
+<button class="p-2 hover:bg-emerald-50 rounded-lg text-emerald-900 transition-colors"><span class="material-symbols-outlined text-xl">analytics</span></button>
+<button class="p-2 hover:bg-emerald-50 rounded-lg text-emerald-900 transition-colors"><span class="material-symbols-outlined text-xl">edit</span></button>
+</div>
+</td>
+</tr>
+<!-- Sample Row 2 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors">
+<td class="px-6 py-4"><input class="rounded text-primary focus:ring-primary border-outline-variant/50" type="checkbox"/></td>
+<td class="px-3 py-4 precision-data text-xs font-bold text-outline">2</td>
+<td class="px-4 py-4 precision-data text-xs">920115400231</td>
+<td class="px-4 py-4 text-sm font-bold text-on-surface">"АгроЛидер" ЖШС</td>
+<td class="px-4 py-4 text-sm text-on-surface-variant">Ақмола/Зеренді</td>
+<td class="px-4 py-4 text-xs font-bold text-on-surface-variant uppercase">Мал ш.</td>
+<td class="px-4 py-4 precision-data text-sm">1,200 га</td>
+<td class="px-4 py-4">
+<span class="bg-tertiary-fixed text-on-tertiary-fixed-variant px-3 py-1 rounded-full text-xs font-bold precision-data">68</span>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
+<span class="text-xs font-bold text-amber-700">Орташа</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="flex items-center gap-1.5 bg-amber-50 text-amber-800 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ring-1 ring-amber-100">
+<span class="material-symbols-outlined text-xs">schedule</span>
+                                        Қаралуда
+                                    </span>
+</td>
+<td class="px-4 py-4 precision-data text-xs">11.08.2025</td>
+<td class="px-4 py-4 text-right">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 hover:bg-emerald-50 rounded-lg text-emerald-900 transition-colors"><span class="material-symbols-outlined text-xl">visibility</span></button>
+<button class="p-2 hover:bg-emerald-50 rounded-lg text-emerald-900 transition-colors"><span class="material-symbols-outlined text-xl">analytics</span></button>
+<button class="p-2 hover:bg-emerald-50 rounded-lg text-emerald-900 transition-colors"><span class="material-symbols-outlined text-xl">edit</span></button>
+</div>
+</td>
+</tr>
+<!-- More rows would be here -->
+</tbody>
+</table>
+</div>
+<!-- Pagination Footer -->
+<div class="px-6 py-6 border-t border-outline-variant/10 flex flex-col sm:flex-row items-center justify-between gap-6">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3">
+<span class="text-xs font-bold text-outline uppercase tracking-widest">Көрсету:</span>
+<select class="bg-surface-container-low border-none rounded-lg text-xs font-bold py-1.5 px-3 focus:ring-2 focus:ring-primary/20">
+<option>10</option>
+<option>25</option>
+<option>50</option>
+<option>100</option>
+</select>
+</div>
+<p class="text-xs text-on-surface-variant font-medium">
+                            Көрсетілуде <span class="precision-data font-bold">1-10</span> барлығы <span class="precision-data font-bold">2,847</span>
+</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-4 py-2 flex items-center gap-1 text-xs font-bold text-outline hover:text-primary transition-colors disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined text-sm">arrow_back</span> Алдыңғы
+                        </button>
+<div class="flex items-center gap-1">
+<button class="w-8 h-8 rounded-lg bg-primary text-white text-xs font-bold precision-data">1</button>
+<button class="w-8 h-8 rounded-lg hover:bg-emerald-50 text-emerald-900 text-xs font-bold precision-data transition-colors">2</button>
+<button class="w-8 h-8 rounded-lg hover:bg-emerald-50 text-emerald-900 text-xs font-bold precision-data transition-colors">3</button>
+<span class="px-2 text-outline">...</span>
+<button class="w-8 h-8 rounded-lg hover:bg-emerald-50 text-emerald-900 text-xs font-bold precision-data transition-colors">57</button>
+</div>
+<button class="px-4 py-2 flex items-center gap-1 text-xs font-bold text-emerald-900 hover:text-primary transition-colors">
+                            Келесі <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 left-0 w-full md:hidden z-50 rounded-t-2xl bg-white/90 dark:bg-emerald-950/90 backdrop-blur-md flex justify-around items-center px-4 pb-4 pt-2 shadow-2xl border-t border-emerald-100/20">
+<a class="flex flex-col items-center justify-center text-slate-400 p-2 font-['Inter'] text-[10px] font-bold" href="#">
+<span class="material-symbols-outlined mb-1">home</span> Home
+            </a>
+<a class="flex flex-col items-center justify-center bg-emerald-100 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-50 rounded-xl p-2 font-['Inter'] text-[10px] font-bold" href="#">
+<span class="material-symbols-outlined mb-1">insights</span> Analysis
+            </a>
+<a class="flex flex-col items-center justify-center text-slate-400 p-2 font-['Inter'] text-[10px] font-bold" href="#">
+<span class="material-symbols-outlined mb-1">inventory</span> Manage
+            </a>
+<a class="flex flex-col items-center justify-center text-slate-400 p-2 font-['Inter'] text-[10px] font-bold" href="#">
+<span class="material-symbols-outlined mb-1">tune</span> System
+            </a>
+</nav>
+</div>
+</body></html>

@@ -242,4 +242,4 @@ AgriScoreKZ/
 
 ## Лицензия
 
-MIT · AgriScore KZ · 2025
+MIT · AgriScore KZ · 2026

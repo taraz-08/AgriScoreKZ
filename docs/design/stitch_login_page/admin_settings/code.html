@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+
+<html class="light" lang="kk"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AgriScore KZ - Скоринг параметрлері</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-tint": "#2a6b2c",
+                        "surface-container-highest": "#e1e3e1",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#ffddb5",
+                        "outline": "#717a6d",
+                        "surface-bright": "#f8faf8",
+                        "surface-container": "#eceeec",
+                        "surface-variant": "#e1e3e1",
+                        "outline-variant": "#c0c9bb",
+                        "on-surface-variant": "#41493e",
+                        "on-primary-fixed": "#002203",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#a0f399",
+                        "inverse-surface": "#2e3130",
+                        "tertiary": "#533400",
+                        "on-secondary-container": "#217128",
+                        "secondary-fixed": "#a3f69c",
+                        "secondary": "#1b6d24",
+                        "surface": "#f8faf8",
+                        "inverse-on-surface": "#eff1ef",
+                        "surface-container-low": "#f2f4f2",
+                        "background": "#f8faf8",
+                        "on-primary-container": "#90d689",
+                        "on-secondary-fixed-variant": "#005312",
+                        "on-background": "#191c1b",
+                        "on-secondary-fixed": "#002204",
+                        "on-surface": "#191c1b",
+                        "primary-container": "#1b5e20",
+                        "on-secondary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#acf4a4",
+                        "surface-container-high": "#e6e9e7",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#643f00",
+                        "surface-dim": "#d8dad9",
+                        "on-tertiary-fixed": "#2a1800",
+                        "secondary-fixed-dim": "#88d982",
+                        "primary-fixed-dim": "#91d78a",
+                        "primary": "#00450d",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#724900",
+                        "on-primary-fixed-variant": "#0c5216",
+                        "on-tertiary-container": "#ffb751",
+                        "inverse-primary": "#91d78a",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#ffb957"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #00450d;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body antialiased">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full h-16 z-40 bg-white/80 dark:bg-emerald-950/80 backdrop-blur-xl flex items-center justify-between px-6 shadow-[0px_20px_40px_rgba(25,28,27,0.06)]">
+<div class="flex items-center gap-4">
+<span class="text-xl font-bold text-emerald-900 dark:text-emerald-50 tracking-tighter">AgriScore KZ</span>
+<div class="hidden md:flex items-center bg-surface-container rounded-full px-4 py-1.5 gap-2">
+<span class="material-symbols-outlined text-outline text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-48" placeholder="Іздеу..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<nav class="hidden md:flex items-center gap-4 font-['Inter'] font-medium tracking-tight">
+<a class="text-emerald-700 dark:text-emerald-400 font-bold border-b-2 border-emerald-700 pb-0.5" href="#">Қазақша</a>
+<a class="text-slate-500 dark:text-slate-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/50 transition-colors px-2 py-1 rounded-md" href="#">Русский</a>
+</nav>
+<div class="flex items-center gap-3">
+<button class="p-2 text-emerald-900 dark:text-emerald-50 hover:bg-emerald-50/50 rounded-full transition-transform active:scale-90">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-emerald-900 dark:text-emerald-50 hover:bg-emerald-50/50 rounded-full transition-transform active:scale-90">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<img alt="User avatar with Role Badge" class="w-10 h-10 rounded-full border-2 border-primary-fixed object-cover" data-alt="Professional headshot of a government official in a suit with a clean office background and soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAixxNsY05PgwYO6gplIBwLEBdr17LtQaBbMDF5oj7MyZ17uogSl95iCr3wr2qNbzyNLzsXHMtsQKPOMhQ3b0p-aDJs21DBz1oR12Su18NMs_kbg5POUHP6vzG68GFUcBegNVFTv1D_tK3Yk_0X87f5HJJCUe71jHKGK0covkIRewdrU-C6l642Z74k6S15EuGut81O099gOgrb1q6P_qcddR5JA4ouJi6U1Trkea7f5kDUsLWQYnp6zSdGhadLC9rMH5KcJLwCMwO"/>
+</div>
+</div>
+</header>
+<div class="flex min-h-screen pt-16 pb-20 md:pb-0">
+<!-- SideNavBar -->
+<aside class="h-[calc(100vh-64px)] w-[260px] hidden md:flex flex-col sticky left-0 top-16 bg-emerald-900 dark:bg-emerald-950 py-6">
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">agriculture</span>
+</div>
+<div>
+<h2 class="text-white font-black text-lg leading-none">AgriScore KZ</h2>
+<p class="text-emerald-100/60 text-[10px] uppercase tracking-widest font-bold mt-1">Management Portal</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="text-emerald-100/70 hover:text-white px-6 py-3 flex items-center gap-3 font-['Inter'] uppercase tracking-widest text-xs font-bold transition-all hover:bg-emerald-800/50" href="#">
+<span class="material-symbols-outlined text-xl">dashboard</span>
+                    НЕГІЗГІ
+                </a>
+<a class="text-emerald-100/70 hover:text-white px-6 py-3 flex items-center gap-3 font-['Inter'] uppercase tracking-widest text-xs font-bold transition-all hover:bg-emerald-800/50" href="#">
+<span class="material-symbols-outlined text-xl">analytics</span>
+                    ТАЛДАУ
+                </a>
+<a class="bg-emerald-800 text-white rounded-lg mx-2 my-1 px-4 py-3 flex items-center gap-3 font-['Inter'] uppercase tracking-widest text-xs font-bold" href="#">
+<span class="material-symbols-outlined text-xl">account_balance</span>
+                    БАСҚАРУ
+                </a>
+<a class="text-emerald-100/70 hover:text-white px-6 py-3 flex items-center gap-3 font-['Inter'] uppercase tracking-widest text-xs font-bold transition-all hover:bg-emerald-800/50" href="#">
+<span class="material-symbols-outlined text-xl">settings</span>
+                    ЖҮЙЕ
+                </a>
+</nav>
+<div class="px-4 mt-auto space-y-1">
+<button class="w-full bg-emerald-800/50 text-white rounded-xl py-3 px-4 font-bold text-xs uppercase tracking-widest hover:bg-emerald-700 transition-colors mb-4">
+                    Export Report
+                </button>
+<a class="text-emerald-100/70 hover:text-white px-4 py-2 flex items-center gap-3 text-xs font-bold uppercase tracking-widest transition-all" href="#">
+<span class="material-symbols-outlined text-lg">help</span>
+                    Help
+                </a>
+<a class="text-emerald-100/70 hover:text-white px-4 py-2 flex items-center gap-3 text-xs font-bold uppercase tracking-widest transition-all" href="#">
+<span class="material-symbols-outlined text-lg">logout</span>
+                    Logout
+                </a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 px-6 md:px-12 py-10 max-w-6xl mx-auto">
+<!-- Header Section -->
+<div class="mb-10">
+<h1 class="text-4xl md:text-5xl font-extrabold tracking-tighter text-on-background mb-6">Скоринг параметрлері</h1>
+<div class="bg-tertiary-fixed text-on-tertiary-fixed-variant p-4 rounded-xl flex items-center gap-4 shadow-sm border border-tertiary-container/20">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">warning</span>
+<p class="font-medium">⚠️ Параметрлерді өзгерту барлық өтінішкерлердің скорын қайта есептейді</p>
+</div>
+</div>
+<!-- Weight Configuration -->
+<section class="mb-12">
+<div class="flex items-center justify-between mb-8">
+<div class="flex items-center gap-4">
+<h2 class="text-2xl font-bold tracking-tight">Фактор салмақтары</h2>
+<div class="bg-primary-container text-on-primary-container px-4 py-1 rounded-full text-xs font-mono font-bold flex items-center gap-2">
+<span>TOTAL: 100%</span>
+<span class="material-symbols-outlined text-sm">check_circle</span>
+</div>
+</div>
+<button class="text-primary font-bold text-sm flex items-center gap-2 hover:underline">
+<span class="material-symbols-outlined text-lg">history</span>
+                        Тарихы
+                    </button>
+</div>
+<!-- Bento Grid of Factors -->
+<div class="grid grid-cols-1 gap-6">
+<!-- Factor 1 -->
+<div class="bg-surface-container-low rounded-xl p-6 flex flex-col md:flex-row md:items-center gap-6 transition-all hover:bg-surface-container">
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<h3 class="font-bold text-lg">Субсидия тарихы</h3>
+<span class="material-symbols-outlined text-outline text-sm cursor-help" title="Detailed description about subsidy history score">info</span>
+</div>
+<p class="text-on-surface-variant text-sm">Бұрынғы алынған субсидиялардың мақсатты пайдаланылуы мен тиімділігі.</p>
+</div>
+<div class="flex items-center gap-6 md:w-1/2">
+<input class="flex-1 h-1.5 bg-outline-variant rounded-lg appearance-none cursor-pointer accent-primary" max="100" min="0" type="range" value="25"/>
+<div class="flex items-center gap-2">
+<input class="w-16 h-10 bg-surface-container-lowest border-none rounded-lg text-center font-mono font-bold text-primary focus:ring-2 focus:ring-primary" type="text" value="25"/>
+<span class="font-mono font-bold">%</span>
+</div>
+<button class="p-2 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">lock_open</span>
+</button>
+</div>
+</div>
+<!-- Factor 2 -->
+<div class="bg-surface-container-low rounded-xl p-6 flex flex-col md:flex-row md:items-center gap-6 transition-all hover:bg-surface-container">
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<h3 class="font-bold text-lg">Өнімділік көрсеткіштері</h3>
+<span class="material-symbols-outlined text-outline text-sm cursor-help">info</span>
+</div>
+<p class="text-on-surface-variant text-sm">Соңғы 3 жылдағы гектарына алынған өнім көлемінің динамикасы.</p>
+</div>
+<div class="flex items-center gap-6 md:w-1/2">
+<input class="flex-1 h-1.5 bg-outline-variant rounded-lg appearance-none cursor-pointer accent-primary" max="100" min="0" type="range" value="30"/>
+<div class="flex items-center gap-2">
+<input class="w-16 h-10 bg-surface-container-lowest border-none rounded-lg text-center font-mono font-bold text-primary focus:ring-2 focus:ring-primary" type="text" value="30"/>
+<span class="font-mono font-bold">%</span>
+</div>
+<button class="p-2 text-primary">
+<span class="material-symbols-outlined">lock</span>
+</button>
+</div>
+</div>
+<!-- Factor 3 -->
+<div class="bg-surface-container-low rounded-xl p-6 flex flex-col md:flex-row md:items-center gap-6 transition-all hover:bg-surface-container">
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<h3 class="font-bold text-lg">Шаруашылық профилі</h3>
+<span class="material-symbols-outlined text-outline text-sm cursor-help">info</span>
+</div>
+<p class="text-on-surface-variant text-sm">Техникалық жабдықталу, маман саны және заманауи технологияларды қолдану.</p>
+</div>
+<div class="flex items-center gap-6 md:w-1/2">
+<input class="flex-1 h-1.5 bg-outline-variant rounded-lg appearance-none cursor-pointer accent-primary" max="100" min="0" type="range" value="20"/>
+<div class="flex items-center gap-2">
+<input class="w-16 h-10 bg-surface-container-lowest border-none rounded-lg text-center font-mono font-bold text-primary focus:ring-2 focus:ring-primary" type="text" value="20"/>
+<span class="font-mono font-bold">%</span>
+</div>
+<button class="p-2 text-outline">
+<span class="material-symbols-outlined">lock_open</span>
+</button>
+</div>
+</div>
+<!-- Factor 4 -->
+<div class="bg-surface-container-low rounded-xl p-6 flex flex-col md:flex-row md:items-center gap-6 transition-all hover:bg-surface-container">
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<h3 class="font-bold text-lg">Әлеуметтік-экономикалық</h3>
+<span class="material-symbols-outlined text-outline text-sm cursor-help">info</span>
+</div>
+<p class="text-on-surface-variant text-sm">Жергілікті тұрғындарды жұмыспен қамту және салықтық төлемдер тарихы.</p>
+</div>
+<div class="flex items-center gap-6 md:w-1/2">
+<input class="flex-1 h-1.5 bg-outline-variant rounded-lg appearance-none cursor-pointer accent-primary" max="100" min="0" type="range" value="15"/>
+<div class="flex items-center gap-2">
+<input class="w-16 h-10 bg-surface-container-lowest border-none rounded-lg text-center font-mono font-bold text-primary focus:ring-2 focus:ring-primary" type="text" value="15"/>
+<span class="font-mono font-bold">%</span>
+</div>
+<button class="p-2 text-outline">
+<span class="material-symbols-outlined">lock_open</span>
+</button>
+</div>
+</div>
+<!-- Factor 5 -->
+<div class="bg-surface-container-low rounded-xl p-6 flex flex-col md:flex-row md:items-center gap-6 transition-all hover:bg-surface-container">
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<h3 class="font-bold text-lg">Тәуекел факторлары</h3>
+<span class="material-symbols-outlined text-outline text-sm cursor-help">info</span>
+</div>
+<p class="text-on-surface-variant text-sm">Климаттық тәуекелдер мен аймақтық ерекшеліктердің әсері.</p>
+</div>
+<div class="flex items-center gap-6 md:w-1/2">
+<input class="flex-1 h-1.5 bg-outline-variant rounded-lg appearance-none cursor-pointer accent-primary" max="100" min="0" type="range" value="10"/>
+<div class="flex items-center gap-2">
+<input class="w-16 h-10 bg-surface-container-lowest border-none rounded-lg text-center font-mono font-bold text-primary focus:ring-2 focus:ring-primary" type="text" value="10"/>
+<span class="font-mono font-bold">%</span>
+</div>
+<button class="p-2 text-outline">
+<span class="material-symbols-outlined">lock_open</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Threshold & Normalization -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+<!-- Threshold Settings -->
+<section class="bg-surface-container-high rounded-2xl p-8">
+<h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined">vitals</span>
+                        Шекті мәндер (Thresholds)
+                    </h2>
+<div class="space-y-8">
+<div>
+<div class="flex justify-between mb-2">
+<label class="text-sm font-bold uppercase tracking-wider text-on-surface-variant">Shortlist кіру шегі</label>
+<span class="font-mono font-bold text-primary">65 pts</span>
+</div>
+<input class="w-full h-1.5 bg-outline-variant rounded-lg appearance-none cursor-pointer accent-primary" max="100" min="0" type="range" value="65"/>
+</div>
+<div>
+<div class="flex justify-between mb-2">
+<label class="text-sm font-bold uppercase tracking-wider text-on-surface-variant">Жоғары тәуекел шегі</label>
+<span class="font-mono font-bold text-error">40 pts</span>
+</div>
+<input class="w-full h-1.5 bg-outline-variant rounded-lg appearance-none cursor-pointer accent-error" max="100" min="0" type="range" value="40"/>
+</div>
+<div>
+<label class="text-sm font-bold uppercase tracking-wider text-on-surface-variant block mb-2">Максималды shortlist саны</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border-none rounded-xl py-3 px-4 font-mono font-bold text-lg focus:ring-2 focus:ring-primary" type="number" value="1000"/>
+<span class="absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant material-symbols-outlined">group</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Normalization Settings -->
+<section class="bg-surface-container-high rounded-2xl p-8">
+<h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined">tune</span>
+                        Нормализация және Оптимизация
+                    </h2>
+<div class="space-y-4">
+<label class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">show_chart</span>
+</div>
+<div>
+<p class="font-bold">Z-Score Normalization</p>
+<p class="text-xs text-on-surface-variant">Мәндерді орташа деңгейге келтіру</p>
+</div>
+</div>
+<input checked="" class="w-6 h-6 rounded-md text-primary focus:ring-primary border-outline-variant" type="checkbox"/>
+</label>
+<label class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">equalizer</span>
+</div>
+<div>
+<p class="font-bold">Аймақтық коэффициент</p>
+<p class="text-xs text-on-surface-variant">Аймақтар арасындағы тепе-теңдік</p>
+</div>
+</div>
+<input class="w-6 h-6 rounded-md text-primary focus:ring-primary border-outline-variant" type="checkbox"/>
+</label>
+<label class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">verified</span>
+</div>
+<div>
+<p class="font-bold">Авто-валидация</p>
+<p class="text-xs text-on-surface-variant">Деректердің дұрыстығын тексеру</p>
+</div>
+</div>
+<input checked="" class="w-6 h-6 rounded-md text-primary focus:ring-primary border-outline-variant" type="checkbox"/>
+</label>
+</div>
+</section>
+</div>
+<!-- Action Button -->
+<div class="sticky bottom-8 md:static">
+<button class="w-full bg-primary text-white py-6 rounded-2xl font-bold text-xl flex items-center justify-center gap-4 shadow-2xl shadow-primary/20 hover:scale-[1.01] transition-all active:scale-95">
+<span class="material-symbols-outlined">save</span>
+                    Өзгерістерді сақтау және қайта есептеу
+                </button>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-4 pt-2 bg-white/90 dark:bg-emerald-950/90 backdrop-blur-md md:hidden z-50 rounded-t-2xl shadow-2xl border-t border-emerald-100/20">
+<a class="flex flex-col items-center justify-center text-slate-400 p-2 font-['Inter'] text-[10px] font-bold" href="#">
+<span class="material-symbols-outlined text-2xl">home</span>
+            Home
+        </a>
+<a class="flex flex-col items-center justify-center text-slate-400 p-2 font-['Inter'] text-[10px] font-bold" href="#">
+<span class="material-symbols-outlined text-2xl">insights</span>
+            Analysis
+        </a>
+<a class="flex flex-col items-center justify-center bg-emerald-100 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-50 rounded-xl p-2 font-['Inter'] text-[10px] font-bold" href="#">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">inventory</span>
+            Manage
+        </a>
+<a class="flex flex-col items-center justify-center text-slate-400 p-2 font-['Inter'] text-[10px] font-bold" href="#">
+<span class="material-symbols-outlined text-2xl">tune</span>
+            System
+        </a>
+</nav>
+</body></html>

@@ -32,6 +32,45 @@ const DEFAULT_WEIGHTS = {
   riskAssessment: 0.10
 };
 
+// ─── HYBRID SCORING CONFIG ───────────────────────────────────────────────────
+// FINAL_SCORE = ML(50%) + BusinessRules(30%) + RiskInverted(20%) + ClusterBonus
+const DEFAULT_HYBRID_WEIGHTS = { ml: 0.50, business: 0.30, risk: 0.20 };
+const CLUSTER_BONUSES = {
+  'Жоғары тиімді':  3,
+  'Тұрақты орташа': 1,
+  'Өсу потенциалы': 0,
+  'Тәуекелді':     -3,
+};
+
+function loadHybridWeights() {
+  try { return JSON.parse(localStorage.getItem('agri_hybrid_weights') || 'null') || DEFAULT_HYBRID_WEIGHTS; } catch { return DEFAULT_HYBRID_WEIGHTS; }
+}
+
+function calculateHybridScore(applicant) {
+  const hw = loadHybridWeights();
+  const businessScore = applicant.totalScore || 0;
+  const sp = applicant.successProb || calcSuccessProbability(applicant);
+  const mlScore = sp.probability;
+  const an = detectAnomalies(applicant);
+  const riskPenalty = Math.min(100, an.errCnt * 15 + an.warnCnt * 5);
+  const riskScore = 100 - riskPenalty;
+  const clusterBonus = CLUSTER_BONUSES[applicant.clusterLabel] || 0;
+
+  const raw = businessScore * hw.business + mlScore * hw.ml + riskScore * hw.risk + clusterBonus;
+  const hybridScore = Math.min(100, Math.max(0, Math.round(raw)));
+
+  return {
+    hybridScore,
+    components: {
+      business: { score: businessScore, weighted: Math.round(businessScore * hw.business), weight: hw.business },
+      ml:       { score: mlScore,       weighted: Math.round(mlScore * hw.ml),             weight: hw.ml },
+      risk:     { score: riskScore,     weighted: Math.round(riskScore * hw.risk),         weight: hw.risk },
+      cluster:  { bonus: clusterBonus,  label: applicant.clusterLabel || '—' },
+    },
+    recommendation: hybridScore >= 70 ? 'Ұсынылды' : hybridScore >= 50 ? 'Тексеруде' : 'Ұсынылмайды',
+  };
+}
+
 // ─── SCORING ALGORITHM ──────────────────────────────────────────────────────
 function calculateScore(applicant, weights = null) {
   const w = weights || loadWeights();
@@ -291,15 +330,24 @@ const AppState = {
   },
 
   recalculateScores() {
+    // Step 1: Business rules scoring
     this.applicants.forEach(a => {
       const scored = calculateScore(a, this.scoringWeights);
       Object.assign(a, scored);
     });
-    this.applicants.sort((a, b) => b.totalScore - a.totalScore);
-    this.applicants.forEach((a, i) => a.rank = i + 1);
-    // Run ML pipeline after scoring
+    // Step 2: ML pipeline (cluster + probability)
     clusterApplicants(this.applicants);
     this.applicants.forEach(a => { a.successProb = calcSuccessProbability(a); });
+    // Step 3: Hybrid final score
+    this.applicants.forEach(a => {
+      const hybrid = calculateHybridScore(a);
+      a.hybridScore = hybrid.hybridScore;
+      a.hybridComponents = hybrid.components;
+      a.hybridRecommendation = hybrid.recommendation;
+    });
+    // Sort by hybrid score
+    this.applicants.sort((a, b) => (b.hybridScore || b.totalScore) - (a.hybridScore || a.totalScore));
+    this.applicants.forEach((a, i) => a.rank = i + 1);
     this.save();
   },
 
@@ -700,6 +748,84 @@ function getStatusBadgeClass(status) {
     'Ұсынылмайды': 'badge-danger',
   };
   return map[status] || 'badge-secondary';
+}
+
+// ─── SHAP-LIKE FEATURE CONTRIBUTION ANALYSIS ────────────────────────────────
+function calcSHAPExplanation(applicant, allApplicants) {
+  const pool = (allApplicants && allApplicants.length > 1) ? allApplicants : [applicant];
+  const n = pool.length;
+  const factorDefs = [
+    { key: 'f1', name: 'Субсидия тарихы', max: 25 },
+    { key: 'f2', name: 'Өнімділік',       max: 30 },
+    { key: 'f3', name: 'Шаруашылық профилі', max: 20 },
+    { key: 'f4', name: 'Әлеуметтік-экономикалық', max: 15 },
+    { key: 'f5', name: 'Тәуекел бағасы',  max: 10 },
+  ];
+
+  const contributions = factorDefs.map(f => {
+    const actual = applicant.factors?.[f.key] || 0;
+    const avg = pool.reduce((s, a) => s + (a.factors?.[f.key] || 0), 0) / n;
+    const diff = actual - avg;
+    return {
+      name: f.name, actual, max: f.max,
+      average: Math.round(avg * 10) / 10,
+      contribution: Math.round(diff * 10) / 10,
+      pct: Math.round(actual / f.max * 100),
+      direction: diff > 0.5 ? 'positive' : diff < -0.5 ? 'negative' : 'neutral',
+    };
+  });
+  contributions.sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
+
+  const avgTotal = Math.round(pool.reduce((s, a) => s + (a.totalScore || 0), 0) / n);
+  const top3pos = contributions.filter(c => c.contribution > 0).slice(0, 3);
+  const top3neg = contributions.filter(c => c.contribution < 0).slice(0, 3);
+  const posText = top3pos.map(c => `${c.name} (+${c.contribution.toFixed(1)})`).join(', ');
+  const negText = top3neg.map(c => `${c.name} (${c.contribution.toFixed(1)})`).join(', ');
+
+  let summary = `Балл: ${applicant.totalScore}/100 (орташа: ${avgTotal}). `;
+  if (posText) summary += `Артықшылықтар: ${posText}. `;
+  if (negText) summary += `Кемшіліктер: ${negText}.`;
+
+  return { contributions, summary, avgTotal };
+}
+
+// ─── STATISTICAL ANOMALY DETECTION (Z-SCORE) ────────────────────────────────
+function detectZScoreAnomalies(applicant, allApplicants) {
+  if (!allApplicants || allApplicants.length < 5) return [];
+  const feats = [
+    { key: 'totalScore',          label: 'Жалпы балл' },
+    { key: 'landArea',            label: 'Жер алаңы' },
+    { key: 'requestedAmount',     label: 'Сұралған сома' },
+    { key: 'annualRevenue',       label: 'Жылдық кіріс' },
+    { key: 'employees',           label: 'Қызметкерлер' },
+    { key: 'subsidyUtilization',  label: 'Игеру %' },
+  ];
+  const flags = [];
+  feats.forEach(feat => {
+    const vals = allApplicants.map(a => a[feat.key] || 0).filter(v => v > 0);
+    if (vals.length < 5) return;
+    const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
+    const std = Math.sqrt(vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length);
+    if (std < 0.001) return;
+    const val = applicant[feat.key] || 0;
+    const z = (val - mean) / std;
+    if (Math.abs(z) > 3)
+      flags.push({ type: 'error',   code: `ZSTAT_${feat.key.toUpperCase()}`, text: `${feat.label}: статистикалық аномалия (z=${z.toFixed(2)}, мән: ${val}, орташа: ${Math.round(mean)})` });
+    else if (Math.abs(z) > 2)
+      flags.push({ type: 'warning', code: `ZSTAT_${feat.key.toUpperCase()}`, text: `${feat.label}: күдікті мән (z=${z.toFixed(2)}, мән: ${val}, орташа: ${Math.round(mean)})` });
+  });
+  return flags;
+}
+
+// Enhanced detectAnomalies that merges rule-based + statistical
+function detectAnomaliesEnhanced(applicant, allApplicants) {
+  const base = detectAnomalies(applicant);
+  const statistical = detectZScoreAnomalies(applicant, allApplicants || []);
+  const allFlags = [...base.flags, ...statistical];
+  const errCnt  = allFlags.filter(f => f.type === 'error').length;
+  const warnCnt = allFlags.filter(f => f.type === 'warning').length;
+  const anomalyRisk = errCnt > 0 ? 'Жоғары' : warnCnt >= 2 ? 'Орташа' : warnCnt === 1 ? 'Төмен' : 'Жоқ';
+  return { flags: allFlags, anomalyRisk, errCnt, warnCnt, hasStatistical: statistical.length > 0 };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

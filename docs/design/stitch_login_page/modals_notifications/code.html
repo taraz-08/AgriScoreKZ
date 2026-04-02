@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+
+<html class="light" lang="kk"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AgriScore KZ - Modals &amp; Overlays</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-tint": "#2a6b2c",
+              "surface-container-highest": "#e1e3e1",
+              "on-error": "#ffffff",
+              "tertiary-fixed": "#ffddb5",
+              "outline": "#717a6d",
+              "surface-bright": "#f8faf8",
+              "surface-container": "#eceeec",
+              "surface-variant": "#e1e3e1",
+              "outline-variant": "#c0c9bb",
+              "on-surface-variant": "#41493e",
+              "on-primary-fixed": "#002203",
+              "surface-container-lowest": "#ffffff",
+              "secondary-container": "#a0f399",
+              "inverse-surface": "#2e3130",
+              "tertiary": "#533400",
+              "on-secondary-container": "#217128",
+              "secondary-fixed": "#a3f69c",
+              "secondary": "#1b6d24",
+              "surface": "#f8faf8",
+              "inverse-on-surface": "#eff1ef",
+              "surface-container-low": "#f2f4f2",
+              "background": "#f8faf8",
+              "on-primary-container": "#90d689",
+              "on-secondary-fixed-variant": "#005312",
+              "on-background": "#191c1b",
+              "on-secondary-fixed": "#002204",
+              "on-surface": "#191c1b",
+              "primary-container": "#1b5e20",
+              "on-secondary": "#ffffff",
+              "error-container": "#ffdad6",
+              "on-error-container": "#93000a",
+              "primary-fixed": "#acf4a4",
+              "surface-container-high": "#e6e9e7",
+              "on-primary": "#ffffff",
+              "on-tertiary-fixed-variant": "#643f00",
+              "surface-dim": "#d8dad9",
+              "on-tertiary-fixed": "#2a1800",
+              "secondary-fixed-dim": "#88d982",
+              "primary-fixed-dim": "#91d78a",
+              "primary": "#00450d",
+              "on-tertiary": "#ffffff",
+              "tertiary-container": "#724900",
+              "on-primary-fixed-variant": "#0c5216",
+              "on-tertiary-container": "#ffb751",
+              "inverse-primary": "#91d78a",
+              "error": "#ba1a1a",
+              "tertiary-fixed-dim": "#ffb957"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"],
+              "mono": ["JetBrains Mono"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "1.5rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f8faf8;
+        color: #191c1b;
+      }
+      .mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full h-16 z-40 bg-white/80 dark:bg-emerald-950/80 backdrop-blur-xl flex items-center justify-between px-6 w-full shadow-[0px_20px_40px_rgba(25,28,27,0.06)]">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold text-emerald-900 dark:text-emerald-50 tracking-tighter">AgriScore KZ</span>
+<div class="hidden md:flex gap-6 items-center">
+<a class="text-emerald-700 dark:text-emerald-400 font-bold border-b-2 border-emerald-700 font-['Inter'] font-medium tracking-tight" href="#">Қазақша</a>
+<a class="text-slate-500 dark:text-slate-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/50 transition-colors font-['Inter'] font-medium tracking-tight" href="#">Русский</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-emerald-50/50 transition-transform active:scale-90">
+<span class="material-symbols-outlined text-emerald-900">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-emerald-50/50 transition-transform active:scale-90">
+<span class="material-symbols-outlined text-emerald-900">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant/20">
+<img class="w-full h-full object-cover" data-alt="Professional headshot of a government official in a dark suit with a neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8vstP-NvsGNuzeL_mVLvclWA_anrBHI09AYOJdyI7zFkfMOjDHdfgFIFijF_H8QszPSFhkPh7SabUDjGqgkK99V6-IMau3frQdHEXl7Cl3Wwh1SbWk7UNw1rERvKnwf6ag-jYuz901kxvzljaSX_uB91-TG-ossSbKFXwPVtDKk2Jmwx3tOur9c_nHSQAdHM2r8l2D5-ZAzbsvqEvwbVDL_TojMc_As-oLTWQc-hmgquIxhByZN6zTDzxqxXp6KnE1kYUL1_Baa_l"/>
+</div>
+</div>
+</nav>
+<!-- SideNavBar (Hidden on Mobile) -->
+<aside class="h-screen w-[260px] hidden md:flex flex-col sticky left-0 top-0 bg-emerald-900 dark:bg-emerald-950 py-6 z-30">
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-emerald-900">agriculture</span>
+</div>
+<div>
+<h1 class="text-white font-black text-lg leading-none">AgriScore KZ</h1>
+<p class="text-emerald-100/60 text-[10px] uppercase tracking-widest font-bold">Management Portal</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="bg-emerald-800 text-white rounded-lg mx-2 my-1 flex items-center px-4 py-3 gap-3 transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-['Inter'] uppercase tracking-widest text-xs font-bold">НЕГІЗГІ</span>
+</a>
+<a class="text-emerald-100/70 hover:text-white px-4 py-3 flex items-center gap-3 mx-2 hover:bg-emerald-800/50 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-['Inter'] uppercase tracking-widest text-xs font-bold">ТАЛДАУ</span>
+</a>
+<a class="text-emerald-100/70 hover:text-white px-4 py-3 flex items-center gap-3 mx-2 hover:bg-emerald-800/50 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">account_balance</span>
+<span class="font-['Inter'] uppercase tracking-widest text-xs font-bold">БАСҚАРУ</span>
+</a>
+<a class="text-emerald-100/70 hover:text-white px-4 py-3 flex items-center gap-3 mx-2 hover:bg-emerald-800/50 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-['Inter'] uppercase tracking-widest text-xs font-bold">ЖҮЙЕ</span>
+</a>
+</nav>
+<div class="px-4 mt-auto space-y-2">
+<button class="w-full bg-tertiary-container text-on-tertiary-container py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all">
+<span class="material-symbols-outlined text-sm">download</span>
+                Export Report
+            </button>
+<div class="pt-4 border-t border-emerald-800/50">
+<a class="text-emerald-100/70 hover:text-white px-4 py-2 flex items-center gap-3 text-xs font-bold uppercase tracking-wider" href="#">
+<span class="material-symbols-outlined text-sm">help</span>
+                    Help
+                </a>
+<a class="text-emerald-100/70 hover:text-white px-4 py-2 flex items-center gap-3 text-xs font-bold uppercase tracking-wider" href="#">
+<span class="material-symbols-outlined text-sm">logout</span>
+                    Logout
+                </a>
+</div>
+</div>
+</aside>
+<!-- Main Canvas Content (Simulated for Context) -->
+<main class="flex-1 p-8 mt-16 md:ml-0 overflow-x-hidden">
+<header class="mb-12">
+<h2 class="text-5xl font-extrabold tracking-tighter text-on-surface mb-2">Басқару панелі</h2>
+<p class="text-on-surface-variant max-w-2xl">Агроөнеркәсіптік кешеннің мониторингі мен субсидияларды бөлудің цифрлық экожүйесі.</p>
+</header>
+<!-- Notification Toast Success (Top-Right) -->
+<div class="fixed top-20 right-6 z-50 animate-fade-in">
+<div class="bg-secondary-container text-on-secondary-container px-6 py-4 rounded-xl shadow-[0px_20px_40px_rgba(25,28,27,0.06)] flex items-center gap-4 border-l-4 border-secondary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<div class="flex flex-col">
+<span class="font-bold text-sm">Сәтті аяқталды</span>
+<span class="text-xs opacity-80">Есеп сәтті экспортталды.</span>
+</div>
+<button class="ml-4 opacity-50 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-sm">close</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Modal 1: Score Detail Popup (Static Example) -->
+<div class="lg:col-span-2">
+<section class="bg-surface-container-lowest rounded-xl p-8 shadow-[0px_20px_40px_rgba(25,28,27,0.06)] max-w-[600px] mx-auto border border-outline-variant/10">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h3 class="text-2xl font-bold tracking-tight">Неліктен <span class="mono text-primary">84</span> балл?</h3>
+<p class="text-on-surface-variant text-sm mt-1">Көрсеткіштердің егжей-тегжейлі талдауы</p>
+</div>
+<button class="p-2 hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="space-y-6">
+<div class="space-y-2">
+<div class="flex justify-between items-end">
+<span class="text-sm font-medium">Топырақ құнарлылығы</span>
+<span class="mono font-bold text-primary">92/100</span>
+</div>
+<div class="h-3 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[92%]"></div>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Топырақ құрамындағы азот пен фосфор деңгейі оңтайлы мөлшерде сақталған. Өнімділік әлеуеті өте жоғары.</p>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-end">
+<span class="text-sm font-medium">Су ресурстарын пайдалану</span>
+<span class="mono font-bold text-primary">76/100</span>
+</div>
+<div class="h-3 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[76%]"></div>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Тамшылатып суару жүйесі енгізілген, бірақ су қоймаларының толу деңгейі орташа көрсеткіште.</p>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-end">
+<span class="text-sm font-medium">Қаржылық тұрақтылық</span>
+<span class="mono font-bold text-tertiary">54/100</span>
+</div>
+<div class="h-3 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-tertiary-container w-[54%]"></div>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Несиелік берешек деңгейі жоғары. Субсидиялау кезінде қосымша кепілдіктер талап етілуі мүмкін.</p>
+</div>
+</div>
+<div class="mt-10 flex justify-end">
+<button class="px-8 py-3 bg-primary text-on-primary rounded-lg font-bold hover:opacity-90 transition-all">Жабу</button>
+</div>
+</section>
+</div>
+<div class="space-y-8">
+<!-- Modal 2: Add to Shortlist -->
+<section class="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_20px_40px_rgba(25,28,27,0.06)] border border-outline-variant/10">
+<h3 class="text-lg font-bold mb-4">Shortlist-ке қосылсын ба?</h3>
+<div class="bg-surface-container-low rounded-lg p-4 mb-6 flex items-center gap-4">
+<div class="w-12 h-12 bg-primary-container rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container">person</span>
+</div>
+<div>
+<p class="font-bold text-sm">Арман Сұлтанов</p>
+<p class="text-xs mono text-secondary font-bold">Score: 88.4</p>
+</div>
+</div>
+<div class="space-y-4">
+<label class="block">
+<span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Пікір (міндетті емес)</span>
+<textarea class="mt-1 block w-full bg-surface-container-highest border-none rounded-md text-sm focus:ring-primary h-24" placeholder="Үміткер туралы қосымша мәлімет..."></textarea>
+</label>
+<div class="flex flex-col gap-2">
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg font-bold hover:opacity-90 transition-all">Иә, қосу</button>
+<button class="w-full bg-surface-container-high text-on-surface-variant py-3 rounded-lg font-bold hover:bg-surface-container-highest transition-all">Болдырмау</button>
+</div>
+</div>
+</section>
+<!-- Modal 3: Export Report -->
+<section class="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_20px_40px_rgba(25,28,27,0.06)] border border-outline-variant/10">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">download</span>
+<h3 class="text-lg font-bold">Есепті экспорттау</h3>
+</div>
+<div class="space-y-6">
+<div>
+<span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant block mb-3">Формат таңдаңыз</span>
+<div class="grid grid-cols-3 gap-2">
+<button class="p-3 border-2 border-primary rounded-lg flex flex-col items-center gap-1 bg-primary-container/10">
+<span class="material-symbols-outlined text-primary">description</span>
+<span class="text-[10px] font-bold">PDF</span>
+</button>
+<button class="p-3 border-2 border-outline-variant/20 rounded-lg flex flex-col items-center gap-1 hover:border-primary/50 transition-all">
+<span class="material-symbols-outlined text-on-surface-variant">table_chart</span>
+<span class="text-[10px] font-bold">Excel</span>
+</button>
+<button class="p-3 border-2 border-outline-variant/20 rounded-lg flex flex-col items-center gap-1 hover:border-primary/50 transition-all">
+<span class="material-symbols-outlined text-on-surface-variant">csv</span>
+<span class="text-[10px] font-bold">CSV</span>
+</button>
+</div>
+</div>
+<div>
+<span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant block mb-3">Кезеңді таңдаңыз</span>
+<div class="flex gap-2">
+<input class="bg-surface-container-highest border-none rounded-md text-xs w-full focus:ring-primary" type="date"/>
+<input class="bg-surface-container-highest border-none rounded-md text-xs w-full focus:ring-primary" type="date"/>
+</div>
+</div>
+<div class="bg-surface-container rounded-lg p-3">
+<p class="text-[10px] font-bold text-on-surface-variant uppercase mb-1">Сүзгілер жиынтығы</p>
+<p class="text-xs">Ақмола обл., Бидай өсірушілер, Score &gt; 70</p>
+</div>
+<button class="w-full bg-primary text-on-primary py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-95 transition-all">
+<span class="material-symbols-outlined">cloud_download</span>
+                            Жүктеу
+                        </button>
+</div>
+</section>
+<!-- Notification Toast Error (Contextual) -->
+<div class="bg-error-container text-on-error-container px-6 py-4 rounded-xl shadow-lg flex items-center gap-4 border-l-4 border-error">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">error</span>
+<div class="flex flex-col">
+<span class="font-bold text-sm">Қате</span>
+<span class="text-xs opacity-80">Файл форматы жарамсыз.</span>
+</div>
+</div>
+<!-- Notification Toast Info (Contextual) -->
+<div class="bg-surface-container-high text-on-surface-variant px-6 py-4 rounded-xl shadow-lg flex items-center gap-4 border-l-4 border-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">info</span>
+<div class="flex flex-col">
+<span class="font-bold text-sm">Мәлімет</span>
+<span class="text-xs opacity-80">Жаңа деректер қолжетімді.</span>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-16 mb-24 max-w-4xl">
+<h4 class="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-6">Жүйенің соңғы жаңартулары</h4>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="p-6 bg-surface-container-low rounded-xl flex gap-4 items-start">
+<div class="bg-white p-3 rounded-lg shadow-sm">
+<span class="material-symbols-outlined text-primary">analytics</span>
+</div>
+<div>
+<h5 class="font-bold text-on-surface">AI Талдау 2.0</h5>
+<p class="text-xs text-on-surface-variant leading-relaxed mt-1">Топырақ құнарын болжау жүйесі жаңартылды. Қателік ықтималдығы 4.2% төмендеді.</p>
+</div>
+</div>
+<div class="p-6 bg-surface-container-low rounded-xl flex gap-4 items-start">
+<div class="bg-white p-3 rounded-lg shadow-sm">
+<span class="material-symbols-outlined text-secondary">security</span>
+</div>
+<div>
+<h5 class="font-bold text-on-surface">Қауіпсіздік хаттамасы</h5>
+<p class="text-xs text-on-surface-variant leading-relaxed mt-1">Есептерді экспорттау кезінде шифрлаудың жаңа стандарттары енгізілді.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Visible on Mobile) -->
+<nav class="fixed bottom-0 left-0 w-full md:hidden flex justify-around items-center px-4 pb-4 pt-2 bg-white/90 dark:bg-emerald-950/90 backdrop-blur-md z-50 rounded-t-2xl shadow-2xl border-t border-emerald-100/20">
+<a class="flex flex-col items-center justify-center bg-emerald-100 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-50 rounded-xl p-2 px-4 transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-['Inter'] text-[10px] font-bold">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 p-2 px-4 hover:bg-emerald-50 transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-['Inter'] text-[10px] font-bold">Analysis</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 p-2 px-4 hover:bg-emerald-50 transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">inventory</span>
+<span class="font-['Inter'] text-[10px] font-bold">Manage</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 p-2 px-4 hover:bg-emerald-50 transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">tune</span>
+<span class="font-['Inter'] text-[10px] font-bold">System</span>
+</a>
+</nav>
+<!-- Background Decorative Element -->
+<div class="fixed top-0 right-0 -z-10 w-full h-full opacity-30 pointer-events-none">
+<div class="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-primary/5 blur-[120px]"></div>
+<div class="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-secondary/5 blur-[100px]"></div>
+</div>
+</body></html>
