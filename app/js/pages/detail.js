@@ -569,45 +569,40 @@ function renderRiskTab(a) {
     </div>`;
 }
 
-// ─── WHAT-IF TAB ──────────────────────────────────────────────────────────────
+// ─── WHAT-IF TAB (real factors from dataset) ─────────────────────────────────
 function renderWhatIfTab(a) {
   const el = document.getElementById('whatif-tab-content');
   if (!el) return;
+  const dirOptions = DIRECTIONS.map(d =>
+    `<option value="${d}" ${a.direction===d?'selected':''}>${d.replace('Субсидирование ','')}</option>`
+  ).join('');
   el.innerHTML = `
     <div class="card mb-4" style="padding:20px">
       <div class="card-title mb-2">🔬 What-if Симуляция</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Параметрлерді өзгертіп, балл қалай өзгеретінін тексеріңіз</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">
+        Нақты деректер негізіндегі симуляция — параметрлерді өзгертіп, балл қалай өзгеретінін тексеріңіз
+      </p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        <div class="form-group"><label class="form-label" style="font-size:12px">Алдыңғы субсидия</label>
-          <select class="form-control" id="wi-prevSubsidy" style="font-size:12px">
-            <option value="1" ${a.hasPreviousSubsidy?'selected':''}>Бар</option><option value="0" ${!a.hasPreviousSubsidy?'selected':''}>Жоқ</option>
-          </select></div>
-        <div class="form-group"><label class="form-label" style="font-size:12px">Субсидия 100% игерілді</label>
-          <select class="form-control" id="wi-usedFull" style="font-size:12px">
-            <option value="1" ${a.usedFullSubsidy?'selected':''}>Иә</option><option value="0" ${!a.usedFullSubsidy?'selected':''}>Жоқ</option>
-          </select></div>
-        <div class="form-group"><label class="form-label" style="font-size:12px">Өнімділік орташадан жоғары</label>
-          <select class="form-control" id="wi-aboveYield" style="font-size:12px">
-            <option value="1" ${a.aboveAvgYield?'selected':''}>Иә</option><option value="0" ${!a.aboveAvgYield?'selected':''}>Жоқ</option>
-          </select></div>
-        <div class="form-group"><label class="form-label" style="font-size:12px">Өсу тренді бар</label>
-          <select class="form-control" id="wi-trend" style="font-size:12px">
-            <option value="1" ${a.positiveTrend?'selected':''}>Иә</option><option value="0" ${!a.positiveTrend?'selected':''}>Жоқ</option>
-          </select></div>
-        <div class="form-group"><label class="form-label" style="font-size:12px">Суландыру жүйесі</label>
-          <select class="form-control" id="wi-irrigation" style="font-size:12px">
-            <option value="1" ${a.hasIrrigation?'selected':''}>Бар</option><option value="0" ${!a.hasIrrigation?'selected':''}>Жоқ</option>
-          </select></div>
-        <div class="form-group"><label class="form-label" style="font-size:12px">Таза несие тарихы</label>
-          <select class="form-control" id="wi-credit" style="font-size:12px">
-            <option value="1" ${a.cleanCreditHistory?'selected':''}>Иә</option><option value="0" ${!a.cleanCreditHistory?'selected':''}>Жоқ</option>
-          </select></div>
-        <div class="form-group"><label class="form-label" style="font-size:12px">Салық берешегі жоқ</label>
-          <select class="form-control" id="wi-tax" style="font-size:12px">
-            <option value="1" ${a.noTaxDebt?'selected':''}>Иә</option><option value="0" ${!a.noTaxDebt?'selected':''}>Жоқ</option>
-          </select></div>
-        <div class="form-group"><label class="form-label" style="font-size:12px">Жер алаңы (га)</label>
-          <input type="number" class="form-control" id="wi-land" value="${a.landArea||0}" style="font-size:12px"></div>
+        <div class="form-group"><label class="form-label" style="font-size:12px">Поголовье / Бас саны</label>
+          <input type="number" class="form-control" id="wi-headcount" value="${a.headCount||0}" min="1" style="font-size:12px">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Аймақ медианы: ${(DIR_STATS[a.direction]||{medHC:0}).medHC} бас</div>
+        </div>
+        <div class="form-group"><label class="form-label" style="font-size:12px">Норматив (₸/бас)</label>
+          <input type="number" class="form-control" id="wi-normative" value="${a.normative||0}" min="1" style="font-size:12px">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Категория: ${SUBSIDY_CATEGORY_LABELS[a.subsidyCategory]||'—'}</div>
+        </div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label" style="font-size:12px">Бағыт / Направление</label>
+          <select class="form-control" id="wi-direction" style="font-size:12px">${dirOptions}</select>
+        </div>
+        <div class="form-group"><label class="form-label" style="font-size:12px">Өтінім күні</label>
+          <input type="text" class="form-control" id="wi-date" value="${a.applicationDate||'21.01.2025'}" placeholder="DD.MM.YYYY" style="font-size:12px">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Ерте = жоғары приоритет (§21 Правил)</div>
+        </div>
+        <div class="form-group"><label class="form-label" style="font-size:12px">Бастапқы мәртебе</label>
+          <select class="form-control" id="wi-status" style="font-size:12px">
+            ${['Исполнена','Одобрена','Отклонена','Отозвано'].map(s=>`<option value="${s}" ${a.originalStatus===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
       </div>
       <button class="btn btn-primary mt-3" onclick="runWhatIf('${a.id}')"><i class="fas fa-play"></i> Есептеу</button>
     </div>
@@ -618,14 +613,11 @@ function runWhatIf(id) {
   const a = AppState.getApplicant(id);
   if (!a) return;
   const changes = {
-    hasPreviousSubsidy: document.getElementById('wi-prevSubsidy')?.value === '1',
-    usedFullSubsidy:    document.getElementById('wi-usedFull')?.value === '1',
-    aboveAvgYield:      document.getElementById('wi-aboveYield')?.value === '1',
-    positiveTrend:      document.getElementById('wi-trend')?.value === '1',
-    hasIrrigation:      document.getElementById('wi-irrigation')?.value === '1',
-    cleanCreditHistory: document.getElementById('wi-credit')?.value === '1',
-    noTaxDebt:          document.getElementById('wi-tax')?.value === '1',
-    landArea:           parseFloat(document.getElementById('wi-land')?.value||a.landArea),
+    headCount:      parseInt(document.getElementById('wi-headcount')?.value || a.headCount),
+    normative:      parseFloat(document.getElementById('wi-normative')?.value || a.normative),
+    direction:      document.getElementById('wi-direction')?.value || a.direction,
+    applicationDate: document.getElementById('wi-date')?.value || a.applicationDate,
+    originalStatus: document.getElementById('wi-status')?.value || a.originalStatus,
   };
   const r = calcWhatIf(a, changes);
   const diffColor = r.diff > 0 ? 'var(--success)' : r.diff < 0 ? 'var(--danger)' : 'var(--text-muted)';

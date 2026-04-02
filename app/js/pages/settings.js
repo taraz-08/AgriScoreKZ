@@ -25,11 +25,11 @@ function initSettings() {
   if (container) {
     const weights = loadWeights();
     const wDefs = [
-      {key:'subsidyHistory',  label:'Субсидия тарихы',           color:'#1B5E20'},
-      {key:'productivity',    label:'Өнімділік',                  color:'#2E7D32'},
-      {key:'farmProfile',     label:'Шаруашылық профилі',         color:'#388E3C'},
-      {key:'socialEconomic',  label:'Әлеуметтік-экономикалық',   color:'#F9A825'},
-      {key:'riskAssessment',  label:'Тәуекел бағасы',            color:'#1565C0'},
+      {key:'headCount',          label:'Поголовье / масштаб хозяйства',     color:'#1B5E20', hint:'headCount = сома ÷ норматив (§3 Правил)'},
+      {key:'directionPriority',  label:'Стратегиялық бағыт',                color:'#2E7D32', hint:'Скотоводство > Птицеводство > Овцеводство'},
+      {key:'subsidyCategory',    label:'Субсидия категориясы',               color:'#388E3C', hint:'Племенная покупка > Селекция > Производство'},
+      {key:'regionalComparison', label:'Аймақтық салыстыру',                 color:'#F9A825', hint:'Аймақ медианымен салыстыру'},
+      {key:'applicationTiming',  label:'Өтінім уақыты (§21 Правил)',         color:'#1565C0', hint:'Ерте өтінім = жоғары кезек приоритеті'},
     ];
     container.innerHTML = wDefs.map(w => `
       <div class="weight-item">
@@ -37,8 +37,9 @@ function initSettings() {
           <span>${w.label}</span>
           <span class="weight-val" id="wv-${w.key}">${Math.round(weights[w.key]*100)}%</span>
         </div>
-        <input type="range" class="form-range" id="ws-${w.key}" min="0" max="100" value="${Math.round(weights[w.key]*100)}"
+        <input type="range" class="form-range" id="ws-${w.key}" min="0" max="100" value="${Math.round((weights[w.key] ?? DEFAULT_WEIGHTS[w.key] ?? 0.2)*100)}"
           oninput="document.getElementById('wv-${w.key}').textContent=this.value+'%'; updateWeightTotal()">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${w.hint}</div>
       </div>`).join('');
     updateWeightTotal();
   }
@@ -106,14 +107,14 @@ function applyAdaptiveWeights() {
 }
 
 function updateWeightTotal() {
-  const keys = ['subsidyHistory','productivity','farmProfile','socialEconomic','riskAssessment'];
+  const keys = ['headCount','directionPriority','subsidyCategory','regionalComparison','applicationTiming'];
   const total = keys.reduce((s,k) => { const el=document.getElementById(`ws-${k}`); return s+(el?parseInt(el.value):0); }, 0);
   const tw = document.getElementById('weight-total'); if(tw) tw.textContent = total+'%';
   const wrap = document.getElementById('weight-total-wrap'); if(wrap) wrap.classList.toggle('error', total!==100);
 }
 
 function saveAndRecalculate() {
-  const keys = ['subsidyHistory','productivity','farmProfile','socialEconomic','riskAssessment'];
+  const keys = ['headCount','directionPriority','subsidyCategory','regionalComparison','applicationTiming'];
   let total = 0;
   const weights = {};
   keys.forEach(k => { const v=parseInt(document.getElementById(`ws-${k}`)?.value||0); weights[k]=v/100; total+=v; });

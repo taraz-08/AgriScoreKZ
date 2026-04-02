@@ -82,13 +82,14 @@ function generateMethodologyPDF() {
   <p>AgriScore KZ — ауылшаруашылығы субсидияларын "бірінші берген — бірінші алады" принципінен деректерге негізделген объективті рейтингке көшіру жүйесі.</p>
   <h2>2. Гибридті скоринг</h2>
   <p><b>Финалды балл = 50% ML + 30% бизнес ережелер + 20% тәуекел инверсиясы + кластер бонусы</b></p>
-  <div class="formula">FINAL = businessScore×0.30 + mlProbability×0.50 + (100-riskPenalty)×0.20 + clusterBonus</div>
-  <h2>3. Скоринг факторлары</h2>
-  <div class="factor"><div class="factor-title">Субсидия тарихы <span class="weight-badge">${Math.round(weights.subsidyHistory*100)}%</span></div>Алдыңғы субсидияны игеру тарихы, есептер, бұзушылықтар. Максимум: 25 балл.</div>
-  <div class="factor"><div class="factor-title">Өнімділік <span class="weight-badge">${Math.round(weights.productivity*100)}%</span></div>Аймақтық орташадан жоғары өнімділік, өсу тренді, тиімділік. Максимум: 30 балл.</div>
-  <div class="factor"><div class="factor-title">Шаруашылық профилі <span class="weight-badge">${Math.round(weights.farmProfile*100)}%</span></div>Жер алаңы, техника саны, суландыру жүйесі. Максимум: 20 балл.</div>
-  <div class="factor"><div class="factor-title">Әлеуметтік-экономикалық <span class="weight-badge">${Math.round(weights.socialEconomic*100)}%</span></div>Жұмыс орындары, ауылдық аймақ. Максимум: 15 балл.</div>
-  <div class="factor"><div class="factor-title">Тәуекел бағасы <span class="weight-badge">${Math.round(weights.riskAssessment*100)}%</span></div>Несие тарихы, салық берешегі жоқ, сот даулары жоқ. Максимум: 10 балл.</div>
+  <div class="formula">FINAL = businessScore×0.30 + mlProbability×0.50 + (100−riskPenalty)×0.20 + clusterBonus</div>
+  <p style="font-size:11px;color:#666">ML модель 36,651 нақты өтінімге (subsidy.plem.kz, 2025) калибрленген</p>
+  <h2>3. Бизнес-скоринг факторлары (Приложение 1 и 2, Правила №108)</h2>
+  <div class="factor"><div class="factor-title">Поголовье / Масштаб хозяйства <span class="weight-badge">${Math.round((weights.headCount??0.30)*100)}%</span></div>headCount = субсидия сомасы ÷ норматив (§3 Правил). Аймақ медианымен лог-шкала бойынша салыстырылады. Максимум: 30 балл.</div>
+  <div class="factor"><div class="factor-title">Стратегиялық бағыт <span class="weight-badge">${Math.round((weights.directionPriority??0.25)*100)}%</span></div>Ұлттық бюджет бөлінісіне негізделген приоритет: Скотоводство (91 млрд) &gt; Птицеводство (30 млрд) &gt; Овцеводство (10 млрд). Максимум: 25 балл.</div>
+  <div class="factor"><div class="factor-title">Субсидия категориясы <span class="weight-badge">${Math.round((weights.subsidyCategory??0.20)*100)}%</span></div>Норматив мәніне қарай: племенной скот (≥100K/бас) &gt; селекция (15K) &gt; генетикалық қызмет &gt; өнімділік субсидиясы (кг-ға). Максимум: 20 балл.</div>
+  <div class="factor"><div class="factor-title">Аймақтық салыстыру <span class="weight-badge">${Math.round((weights.regionalComparison??0.15)*100)}%</span></div>Субсидия сомасы бағыт+аймақ медианымен салыстырылады. Медианнан жоғары = тұрақты шаруашылық. Максимум: 15 балл.</div>
+  <div class="factor"><div class="factor-title">Өтінім уақыты (§21 Правил) <span class="weight-badge">${Math.round((weights.applicationTiming??0.10)*100)}%</span></div>§21 Правил: төлем тіркелу күні/уақытымен кезектілік бойынша жүзеге асырылады. Ерте өтінім = жоғары кезек приоритеті. Максимум: 10 балл.</div>
   <h2>4. Шешім қабылдау матрицасы</h2>
   <table>
     <thead><tr><th>Балл</th><th>Мәртебе</th><th>Тәуекел</th><th>Ұсыным</th></tr></thead>
