@@ -315,27 +315,24 @@
         <button class="btn btn-ghost btn-sm" onclick="clearBulkSelection()">Болдырмау</button>
       </div>
       <div class="table-wrapper">
-        <table id="applicants-table" style="font-size:12px">
+        <table id="applicants-table" style="font-size:13px;table-layout:fixed;width:100%">
           <thead>
             <tr>
-              <th style="width:32px;padding:8px 4px"><input type="checkbox" id="select-all-cb" style="accent-color:var(--primary);cursor:pointer"></th>
-              <th style="width:28px;padding:8px 4px">#</th>
-              <th style="width:110px" data-sort="iin" class="sortable">ЖСН</th>
-              <th data-sort="name" class="sortable">Атауы</th>
-              <th style="width:120px" data-sort="district" class="sortable">Аудан / Облыс</th>
-              <th style="width:90px" data-sort="productionType" class="sortable">Өндіріс</th>
-              <th style="width:60px" data-sort="landArea" class="sortable">Алаң</th>
-              <th style="width:56px" data-sort="totalScore" class="sortable sort-desc">Балл ↕</th>
-              <th style="width:120px">Кластер</th>
-              <th style="width:68px">Ықтим.</th>
-              <th style="width:72px">Тәуекел</th>
-              <th style="width:90px" data-sort="recommendation" class="sortable">Мәртебе</th>
-              <th style="width:82px" data-sort="applicationDate" class="sortable">Күні</th>
-              <th style="width:80px">Әрекет</th>
+              <th style="width:36px;padding:10px 6px"><input type="checkbox" id="select-all-cb" style="accent-color:var(--primary);cursor:pointer"></th>
+              <th style="width:36px;padding:10px 6px">#</th>
+              <th style="width:200px" data-sort="appNum" class="sortable">Номер заявки</th>
+              <th style="width:170px" data-sort="district" class="sortable">Аудан / Облыс</th>
+              <th style="width:72px" data-sort="totalScore" class="sortable sort-desc">Балл ↕</th>
+              <th style="width:140px">Кластер</th>
+              <th style="width:72px">Ықтим.</th>
+              <th style="width:90px">Тәуекел</th>
+              <th style="width:105px" data-sort="recommendation" class="sortable">Ұсыным</th>
+              <th style="width:95px" data-sort="applicationDate" class="sortable">Күні</th>
+              <th style="width:95px">Әрекет</th>
             </tr>
           </thead>
           <tbody id="applicants-tbody">
-            <tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Жүктелуде...</td></tr>
+            <tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Жүктелуде...</td></tr>
           </tbody>
         </table>
       </div>

@@ -670,8 +670,8 @@ function showScoreQuick(id) {
       <div style="font-size:36px;font-weight:800;color:${getScoreColor(a.totalScore)};margin-top:-8px">${a.totalScore}</div>
       <div style="font-size:12px;color:var(--text-muted)">Рейтинг: #${a.rank} / ${AppState.applicants.length}</div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:12px">
-      ${[{n:'Субсидия',s:a.factors?.f1||0,mx:25},{n:'Өнімділік',s:a.factors?.f2||0,mx:30},{n:'Профиль',s:a.factors?.f3||0,mx:20},{n:'Әлеум.',s:a.factors?.f4||0,mx:15},{n:'Тәуекел',s:a.factors?.f5||0,mx:10}]
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px">
+      ${[{n:'Поголовье',s:a.factors?.f1||0,mx:30},{n:'Бағыт',s:a.factors?.f2||0,mx:25},{n:'Категория',s:a.factors?.f3||0,mx:20},{n:'Аймақ',s:a.factors?.f4||0,mx:15}]
       .map(f=>`<div style="text-align:center;background:var(--bg);padding:8px;border-radius:8px">
         <div style="font-size:16px;font-weight:700;color:var(--primary)">${f.s}</div>
         <div style="font-size:9px;color:var(--text-muted);margin-top:2px">${f.n}</div>
@@ -798,11 +798,6 @@ function renderScoringTab(a) {
       {ok:a.breakdown?.manyEmployees,text:`Қызметкерлер >10 (${a.employees} адам)`,pts:6},
       {ok:a.breakdown?.isRural,text:'Ауылдық аймақ',pts:5},
       {ok:a.breakdown?.isMinorityRegion,text:'Аз тараған аймақ',pts:4},
-    ]},
-    { name:'Тәуекел бағасы', weight:'10%', score:a.factors?.f5||0, max:10, items:[
-      {ok:a.breakdown?.cleanCreditHistory,text:'Таза несие тарихы',pts:4},
-      {ok:a.breakdown?.noTaxDebt,text:'Салық берешегі жоқ',pts:4},
-      {ok:a.breakdown?.noLegalDisputes,text:'Сот дауы жоқ',pts:2},
     ]},
   ];
 
@@ -968,8 +963,8 @@ function renderScoringTab(a) {
 
 function explainFactor(idx, id) {
   const a = AppState.getApplicant(id);
-  const names = ['Субсидия тарихы','Өнімділік','Шаруашылық профилі','Әлеуметтік-экономикалық','Тәуекел бағасы'];
-  const scores = [a?.factors?.f1,a?.factors?.f2,a?.factors?.f3,a?.factors?.f4,a?.factors?.f5];
+  const names = ['Поголовье (масштаб)','Бағыт басымдылығы','Субсидия категориясы','Аймақтық салыстыру'];
+  const scores = [a?.factors?.f1,a?.factors?.f2,a?.factors?.f3,a?.factors?.f4];
   const prompt = `${a?.name} өтінімі бойынша "${names[idx]}" факторының ${scores[idx]} баллын қазақша 3-4 сөйлемде түсіндіріңіз.`;
   showAIModal(`🤖 ${names[idx]}`, prompt, 'score');
 }
@@ -1001,11 +996,10 @@ async function requestAIScoring(id) {
 
 Жауапты ТІКЕЛЕЙ JSON форматында бер (markdown жоқ, тек JSON):
 {
-  "f1": {"score": 0-25, "reason": "бір сөйлем қазақша"},
-  "f2": {"score": 0-30, "reason": "бір сөйлем қазақша"},
+  "f1": {"score": 0-30, "reason": "бір сөйлем қазақша"},
+  "f2": {"score": 0-25, "reason": "бір сөйлем қазақша"},
   "f3": {"score": 0-20, "reason": "бір сөйлем қазақша"},
   "f4": {"score": 0-15, "reason": "бір сөйлем қазақша"},
-  "f5": {"score": 0-10, "reason": "бір сөйлем қазақша"},
   "summary": "жалпы бағалау 2-3 сөйлем қазақша"
 }`;
 
@@ -1019,7 +1013,7 @@ async function requestAIScoring(id) {
     let text = '';
     if (d.demo) {
       // demo fallback
-      text = `{"f1":{"score":${a.factors?.f1||15},"reason":"Субсидия игеру тарихы орташа деңгейде."},"f2":{"score":${a.factors?.f2||20},"reason":"Өнімділік аймақтық орташаға сəйкес келеді."},"f3":{"score":${a.factors?.f3||14},"reason":"Жер алаңы мен техника саны жеткілікті."},"f4":{"score":${a.factors?.f4||10},"reason":"Ауылдық аймақта əлеуметтік маңызы бар."},"f5":{"score":${a.factors?.f5||7},"reason":"Несие тарихы таза, тәуекел деңгейі төмен."},"summary":"Өтінім орташа деңгейде бағаланды. Комиссия қосымша қарауды ұсынады."}`;
+      text = `{"f1":{"score":${a.factors?.f1||18},"reason":"Поголовье масштабы аймақ медианасына сəйкес."},"f2":{"score":${a.factors?.f2||18},"reason":"Бағыт ұлттық приоритетке сəйкес."},"f3":{"score":${a.factors?.f3||14},"reason":"Субсидия категориясы орташа деңгейде."},"f4":{"score":${a.factors?.f4||10},"reason":"Аймақтық салыстыру орташа деңгейде."},"summary":"Өтінім орташа деңгейде бағаланды. Комиссия қосымша қарауды ұсынады."}`;
     } else {
       text = d.candidates?.[0]?.content?.parts?.[0]?.text || '';
     }
@@ -1036,10 +1030,10 @@ async function requestAIScoring(id) {
 function renderAIScoringResult(id, aiScores) {
   const a = AppState.getApplicant(id);
   if (!a) return;
-  const factorKeys  = ['f1','f2','f3','f4','f5'];
-  const factorNames = ['Субсидия тарихы','Өнімділік','Шаруашылық профилі','Әлеуметтік-экономикалық','Тәуекел бағасы'];
-  const factorMax   = [25, 30, 20, 15, 10];
-  const factorWeights = ['25%','30%','20%','15%','10%'];
+  const factorKeys  = ['f1','f2','f3','f4'];
+  const factorNames = ['Поголовье (масштаб)','Бағыт басымдылығы','Субсидия категориясы','Аймақтық салыстыру'];
+  const factorMax   = [30, 25, 20, 15];
+  const factorWeights = ['33%','28%','22%','17%'];
 
   const grid = document.getElementById('factors-grid-detail');
   if (grid) {
@@ -1086,8 +1080,8 @@ function initRadarChart(a) {
   const ctx = document.getElementById('radar-chart');
   if (!ctx) return;
   if (Charts.radar) Charts.radar.destroy();
-  const maxes = [25,30,20,15,10];
-  const scores = [a.factors?.f1||0,a.factors?.f2||0,a.factors?.f3||0,a.factors?.f4||0,a.factors?.f5||0];
+  const maxes = [30,25,20,15];
+  const scores = [a.factors?.f1||0,a.factors?.f2||0,a.factors?.f3||0,a.factors?.f4||0];
   const norm = scores.map((s,i)=>Math.round(s/maxes[i]*100));
   Charts.radar = new Chart(ctx, {
     type:'radar',
@@ -1405,7 +1399,7 @@ function runWhatIf(id) {
       </div>
       <div style="text-align:center;font-size:14px;margin-bottom:12px">${slMsg}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;font-size:11px">
-        ${[['Субсидия',r.factors?.f1||0,25],['Өнімділік',r.factors?.f2||0,30],['Профиль',r.factors?.f3||0,20],['Әлеум.',r.factors?.f4||0,15],['Тәуекел',r.factors?.f5||0,10]]
+        ${[['Поголовье',r.factors?.f1||0,30],['Бағыт',r.factors?.f2||0,25],['Категория',r.factors?.f3||0,20],['Аймақ',r.factors?.f4||0,15]]
           .map(([n,s,mx]) => `<div style="text-align:center;background:var(--bg);padding:8px 12px;border-radius:8px;min-width:80px">
             <div style="font-weight:700;color:var(--primary)">${s}/${mx}</div>
             <div style="color:var(--text-muted)">${n}</div>

@@ -110,11 +110,6 @@ function renderScoringTab(a) {
       {ok:a.breakdown?.isRural,text:'Ауылдық аймақ',pts:5},
       {ok:a.breakdown?.isMinorityRegion,text:'Аз тараған аймақ',pts:4},
     ]},
-    { name:'Тәуекел бағасы', weight:'10%', score:a.factors?.f5||0, max:10, items:[
-      {ok:a.breakdown?.cleanCreditHistory,text:'Таза несие тарихы',pts:4},
-      {ok:a.breakdown?.noTaxDebt,text:'Салық берешегі жоқ',pts:4},
-      {ok:a.breakdown?.noLegalDisputes,text:'Сот дауы жоқ',pts:2},
-    ]},
   ];
 
   const dq = calcDataQuality(a);
@@ -293,7 +288,7 @@ async function requestAIScoring(id) {
 Салық берешегі: ${a.hasTaxDebt?'бар':'жоқ'}, сот дауы: ${a.hasLegalDisputes?'бар':'жоқ'}
 
 Жауапты ТІКЕЛЕЙ JSON форматында бер:
-{"f1":{"score":0-25,"reason":"бір сөйлем қазақша"},"f2":{"score":0-30,"reason":"..."},"f3":{"score":0-20,"reason":"..."},"f4":{"score":0-15,"reason":"..."},"f5":{"score":0-10,"reason":"..."},"summary":"жалпы бағалау 2-3 сөйлем қазақша"}`;
+{"f1":{"score":0-30,"reason":"бір сөйлем қазақша"},"f2":{"score":0-25,"reason":"..."},"f3":{"score":0-20,"reason":"..."},"f4":{"score":0-15,"reason":"..."},"summary":"жалпы бағалау 2-3 сөйлем қазақша"}`;
 
   try {
     const res = await fetch('/api/gemini', {
@@ -302,7 +297,7 @@ async function requestAIScoring(id) {
     });
     const d = await res.json();
     let text = d.demo
-      ? `{"f1":{"score":${a.factors?.f1||15},"reason":"Субсидия игеру тарихы орташа деңгейде."},"f2":{"score":${a.factors?.f2||20},"reason":"Өнімділік аймақтық орташаға сəйкес."},"f3":{"score":${a.factors?.f3||14},"reason":"Жер алаңы мен техника жеткілікті."},"f4":{"score":${a.factors?.f4||10},"reason":"Ауылдық аймақта əлеуметтік маңызы бар."},"f5":{"score":${a.factors?.f5||7},"reason":"Несие тарихы таза."},"summary":"Өтінім орташа деңгейде бағаланды."}`
+      ? `{"f1":{"score":${a.factors?.f1||18},"reason":"Поголовье масштабы аймақ медианасына сəйкес."},"f2":{"score":${a.factors?.f2||18},"reason":"Бағыт ұлттық приоритетке сəйкес."},"f3":{"score":${a.factors?.f3||14},"reason":"Субсидия категориясы орташа деңгейде."},"f4":{"score":${a.factors?.f4||10},"reason":"Аймақтық салыстыру орташа."},"summary":"Өтінім орташа деңгейде бағаланды."}`
       : (d.candidates?.[0]?.content?.parts?.[0]?.text || '');
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('JSON жауап алынбады');
@@ -316,10 +311,10 @@ async function requestAIScoring(id) {
 function renderAIScoringResult(id, aiScores) {
   const a = AppState.getApplicant(id);
   if (!a) return;
-  const factorKeys  = ['f1','f2','f3','f4','f5'];
-  const factorNames = ['Субсидия тарихы','Өнімділік','Шаруашылық профилі','Әлеуметтік-экономикалық','Тәуекел бағасы'];
-  const factorMax   = [25, 30, 20, 15, 10];
-  const factorWeights = ['25%','30%','20%','15%','10%'];
+  const factorKeys  = ['f1','f2','f3','f4'];
+  const factorNames = ['Поголовье (масштаб)','Бағыт басымдылығы','Субсидия категориясы','Аймақтық салыстыру'];
+  const factorMax   = [30, 25, 20, 15];
+  const factorWeights = ['33%','28%','22%','17%'];
 
   const grid = document.getElementById('factors-grid-detail');
   if (grid) {
@@ -365,13 +360,13 @@ function initRadarChart(a) {
   const ctx = document.getElementById('radar-chart');
   if (!ctx) return;
   if (Charts.radar) Charts.radar.destroy();
-  const maxes = [25,30,20,15,10];
-  const scores = [a.factors?.f1||0,a.factors?.f2||0,a.factors?.f3||0,a.factors?.f4||0,a.factors?.f5||0];
+  const maxes = [30,25,20,15];
+  const scores = [a.factors?.f1||0,a.factors?.f2||0,a.factors?.f3||0,a.factors?.f4||0];
   const norm = scores.map((s,i)=>Math.round(s/maxes[i]*100));
   Charts.radar = new Chart(ctx, {
     type:'radar',
     data:{
-      labels:['Субсидия\nтарихы','Өнімділік','Шаруашылық\nпрофилі','Әлеуметтік-\nэконом.','Тәуекел\nбағасы'],
+      labels:['Поголовье','Бағыт\nбасымдылығы','Субсидия\nкатегориясы','Аймақтық\nсалыстыру'],
       datasets:[
         {label:'Өтінімдер',data:norm,backgroundColor:'rgba(27,94,32,0.2)',borderColor:'#1B5E20',borderWidth:2,pointBackgroundColor:'#1B5E20',pointRadius:4},
         {label:'Аймақтық орташа',data:[60,55,50,45,65],backgroundColor:'rgba(21,101,192,0.1)',borderColor:'#1565C0',borderWidth:2,borderDash:[5,5],pointRadius:3}
@@ -598,11 +593,6 @@ function renderWhatIfTab(a) {
           <input type="text" class="form-control" id="wi-date" value="${a.applicationDate||'21.01.2025'}" placeholder="DD.MM.YYYY" style="font-size:12px">
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Ерте = жоғары приоритет (§21 Правил)</div>
         </div>
-        <div class="form-group"><label class="form-label" style="font-size:12px">Бастапқы мәртебе</label>
-          <select class="form-control" id="wi-status" style="font-size:12px">
-            ${['Исполнена','Одобрена','Отклонена','Отозвано'].map(s=>`<option value="${s}" ${a.originalStatus===s?'selected':''}>${s}</option>`).join('')}
-          </select>
-        </div>
       </div>
       <button class="btn btn-primary mt-3" onclick="runWhatIf('${a.id}')"><i class="fas fa-play"></i> Есептеу</button>
     </div>
@@ -617,7 +607,7 @@ function runWhatIf(id) {
     normative:      parseFloat(document.getElementById('wi-normative')?.value || a.normative),
     direction:      document.getElementById('wi-direction')?.value || a.direction,
     applicationDate: document.getElementById('wi-date')?.value || a.applicationDate,
-    originalStatus: document.getElementById('wi-status')?.value || a.originalStatus,
+    originalStatus: a.originalStatus,
   };
   const r = calcWhatIf(a, changes);
   const diffColor = r.diff > 0 ? 'var(--success)' : r.diff < 0 ? 'var(--danger)' : 'var(--text-muted)';
@@ -648,7 +638,7 @@ function runWhatIf(id) {
       </div>
       <div style="text-align:center;font-size:14px;margin-bottom:12px">${slMsg}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;font-size:11px">
-        ${[['Субсидия',r.factors?.f1||0,25],['Өнімділік',r.factors?.f2||0,30],['Профиль',r.factors?.f3||0,20],['Әлеум.',r.factors?.f4||0,15],['Тәуекел',r.factors?.f5||0,10]]
+        ${[['Поголовье',r.factors?.f1||0,30],['Бағыт',r.factors?.f2||0,25],['Категория',r.factors?.f3||0,20],['Аймақ',r.factors?.f4||0,15]]
           .map(([n,s,mx])=>`<div style="text-align:center;background:var(--bg);padding:8px 12px;border-radius:8px;min-width:80px">
             <div style="font-weight:700;color:var(--primary)">${s}/${mx}</div>
             <div style="color:var(--text-muted)">${n}</div>

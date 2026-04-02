@@ -89,7 +89,6 @@ function generateMethodologyPDF() {
   <div class="factor"><div class="factor-title">Стратегиялық бағыт <span class="weight-badge">${Math.round((weights.directionPriority??0.25)*100)}%</span></div>Ұлттық бюджет бөлінісіне негізделген приоритет: Скотоводство (91 млрд) &gt; Птицеводство (30 млрд) &gt; Овцеводство (10 млрд). Максимум: 25 балл.</div>
   <div class="factor"><div class="factor-title">Субсидия категориясы <span class="weight-badge">${Math.round((weights.subsidyCategory??0.20)*100)}%</span></div>Норматив мәніне қарай: племенной скот (≥100K/бас) &gt; селекция (15K) &gt; генетикалық қызмет &gt; өнімділік субсидиясы (кг-ға). Максимум: 20 балл.</div>
   <div class="factor"><div class="factor-title">Аймақтық салыстыру <span class="weight-badge">${Math.round((weights.regionalComparison??0.15)*100)}%</span></div>Субсидия сомасы бағыт+аймақ медианымен салыстырылады. Медианнан жоғары = тұрақты шаруашылық. Максимум: 15 балл.</div>
-  <div class="factor"><div class="factor-title">Өтінім уақыты (§21 Правил) <span class="weight-badge">${Math.round((weights.applicationTiming??0.10)*100)}%</span></div>§21 Правил: төлем тіркелу күні/уақытымен кезектілік бойынша жүзеге асырылады. Ерте өтінім = жоғары кезек приоритеті. Максимум: 10 балл.</div>
   <h2>4. Шешім қабылдау матрицасы</h2>
   <table>
     <thead><tr><th>Балл</th><th>Мәртебе</th><th>Тәуекел</th><th>Ұсыным</th></tr></thead>

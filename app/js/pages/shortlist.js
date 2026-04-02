@@ -34,7 +34,7 @@ function renderShortlistTable() {
     <tr draggable="true" data-sl-id="${a.id}" ondragstart="onDragStart(event,${i})" ondragover="onDragOver(event)" ondrop="onDrop(event,${i})" ondragend="onDragEnd(event)">
       <td><span class="drag-handle">⋮⋮</span></td>
       <td><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--bg);font-size:12px;font-weight:700">${i+1}</span></td>
-      <td><div style="font-weight:600">${a.name}</div><div style="font-size:11px;color:var(--text-muted)">${a.iin}</div></td>
+      <td><div style="font-weight:600;font-family:monospace;font-size:12px">${a.appNum||a.name}</div><div style="font-size:11px;color:var(--text-muted)">${a.district}</div></td>
       <td style="font-size:13px">${a.district}</td>
       <td><span class="badge ${getScoreBadgeClass(a.hybridScore||a.totalScore)}">${a.hybridScore||a.totalScore}</span></td>
       <td style="font-size:13px">${formatMoney(a.requestedAmount)}</td>

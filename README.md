@@ -2,7 +2,7 @@
 
 **Explainable AI / ML субсидия скоринг платформасы**
 
-ҚР Ауыл шаруашылығы министрлігі · AI inDrive Hackathon 2025 · Кейс 2
+ҚР Ауыл шаруашылығы министрлігі · AI inDrive Hackathon 2026 · Кейс 2
 
 ---
 
@@ -201,7 +201,7 @@ AgriScoreKZ/
 | Endpoint | Метод | Сипаттама |
 |----------|-------|-----------|
 | `/api/login` | POST | Логин/пароль тексеру |
-| `/api/gemini` | POST | Gemini 2.5 Flash прокси |
+| `/api/gemini` | POST | Gemini 3.1 Pro прокси |
 | `/api/gemini-status` | GET | AI байланыс күйі |
 | `/*` | GET | Статикалық файлдар |
 
@@ -219,7 +219,7 @@ AgriScoreKZ/
 
 ## Хакатон талаптарына сәйкестік
 
-**AI inDrive Hackathon 2025 · Кейс 2**
+**AI inDrive Hackathon 2026 · Кейс 2**
 
 | Талап | Орындалуы |
 |-------|----------|
@@ -240,6 +240,3 @@ AgriScoreKZ/
 
 ---
 
-## Лицензия
-
-MIT · AgriScore KZ · 2026

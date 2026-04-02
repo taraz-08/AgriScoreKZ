@@ -80,7 +80,7 @@ function renderScoringTable(data) {
     const sc = a.hybridScore || a.totalScore;
     return `<tr style="animation-delay:${i*25}ms">
       <td><span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-size:11px;font-weight:700;background:${a.rank<=3?['#FFD700','#C0C0C0','#CD7F32'][a.rank-1]:'var(--bg)'};color:${a.rank<=3?'#333':'var(--text-muted)'}">${a.rank<=3?['🥇','🥈','🥉'][a.rank-1]:a.rank}</span></td>
-      <td><div style="font-weight:600">${a.name}</div><div style="font-size:11px;color:var(--text-muted)">${a.iin}</div></td>
+      <td><div style="font-weight:600;font-family:monospace;font-size:12px">${a.appNum||a.name}</div><div style="font-size:11px;color:var(--text-muted)">${a.region}</div></td>
       <td style="font-size:13px">${a.region}</td>
       <td><span class="badge ${getScoreBadgeClass(sc)} ${sc>=90?'badge-pulse':''}">${sc}</span></td>
       <td>${getRiskDot(a.riskLevel)} ${a.riskLevel}</td>

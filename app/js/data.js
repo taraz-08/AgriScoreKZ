@@ -156,11 +156,10 @@ const ORIGINAL_STATUSES = ['Исполнена', 'Одобрена', 'Откло
 // ─── SCORING WEIGHTS (default, can be customized) ───────────────────────────
 // Based on real subsidy data + PDF business rules (Правила субсидирования №108)
 const DEFAULT_WEIGHTS = {
-  headCount:          0.30,  // Поголовье / масштаб хозяйства
-  directionPriority:  0.25,  // Стратегическое направление животноводства
-  subsidyCategory:    0.20,  // Ценность типа субсидии (племенная работа > производство)
-  regionalComparison: 0.15,  // Объем субсидии относительно региона
-  applicationTiming:  0.10,  // Приоритет очереди (дата подачи — §21 Правил)
+  headCount:          0.33,  // Поголовье / масштаб хозяйства
+  directionPriority:  0.28,  // Стратегическое направление животноводства
+  subsidyCategory:    0.22,  // Ценность типа субсидии (племенная работа > производство)
+  regionalComparison: 0.17,  // Объем субсидии относительно региона
 };
 
 // Legacy alias — keep for backward compat with any old saved weights
@@ -212,11 +211,10 @@ function calculateHybridScore(applicant) {
 function calculateScore(applicant, weights = null) {
   const w = weights || loadWeights();
   // Normalize weight keys: support both new (headCount) and legacy (subsidyHistory) key names
-  const wHC  = w.headCount          ?? w.subsidyHistory   ?? 0.30;
-  const wDir = w.directionPriority  ?? w.productivity     ?? 0.25;
-  const wCat = w.subsidyCategory    ?? w.farmProfile      ?? 0.20;
-  const wReg = w.regionalComparison ?? w.socialEconomic   ?? 0.15;
-  const wTim = w.applicationTiming  ?? w.riskAssessment   ?? 0.10;
+  const wHC  = w.headCount          ?? w.subsidyHistory   ?? 0.33;
+  const wDir = w.directionPriority  ?? w.productivity     ?? 0.28;
+  const wCat = w.subsidyCategory    ?? w.farmProfile      ?? 0.22;
+  const wReg = w.regionalComparison ?? w.socialEconomic   ?? 0.17;
 
   // ── F1: Поголовье (масштаб хозяйства) — max 30 pts ───────────────────────
   // headCount = requestedAmount / normative (§3 Правил: объем = количество × норматив)
@@ -245,24 +243,9 @@ function calculateScore(applicant, weights = null) {
   const amtRatio = amount / Math.max(dirStats.medAmt, 1);
   const f4Raw    = Math.min(15, Math.max(0, Math.round(Math.sqrt(amtRatio) * 10)));
 
-  // ── F5: Приоритет очереди (дата подачи) — max 10 pts ─────────────────────
-  // §21 Правил: выплата по очередности дата/время регистрации
-  // Earlier application = better queue position → higher score
-  const dayOfYear = applicant.dayOfYear || (() => {
-    try {
-      const parts = (applicant.applicationDate || '').split('.');
-      if (parts.length === 3) {
-        const d = new Date(parts[2], parts[1] - 1, parts[0]);
-        return Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
-      }
-    } catch (_) { /* ignore */ }
-    return 200;
-  })();
-  const f5Raw = Math.max(0, Math.min(10, Math.round(10 - (dayOfYear - 21) / 30)));
-
   // ── Weighted total (0-100) ────────────────────────────────────────────────
-  const rawScore = (f1Raw * wHC + f2Raw * wDir + f3Raw * wCat + f4Raw * wReg + f5Raw * wTim);
-  const maxScore = (30   * wHC + 25   * wDir + 20   * wCat + 15   * wReg + 10   * wTim);
+  const rawScore = (f1Raw * wHC + f2Raw * wDir + f3Raw * wCat + f4Raw * wReg);
+  const maxScore = (30   * wHC + 25   * wDir + 20   * wCat + 15   * wReg);
   const totalScore = Math.min(100, Math.max(0, Math.round((rawScore / (maxScore || 1)) * 100)));
 
   const riskLevel      = totalScore > 70 ? 'Төмен' : totalScore > 50 ? 'Орташа' : 'Жоғары';
@@ -271,12 +254,11 @@ function calculateScore(applicant, weights = null) {
   return {
     totalScore, riskLevel, recommendation,
     headCount, hcRatio: Math.round(hcRatio * 100) / 100,
-    subsidyCategory, dayOfYear,
+    subsidyCategory,
     dirPriorityScore: f2Raw,
     normCatScore:     f3Raw,
     amountScore:      f4Raw,
-    applicationTiming: f5Raw,
-    factors: { f1: f1Raw, f2: f2Raw, f3: f3Raw, f4: f4Raw, f5: f5Raw },
+    factors: { f1: f1Raw, f2: f2Raw, f3: f3Raw, f4: f4Raw },
     breakdown: {
       // Real-data flags (used by ML pipeline + anomaly detection)
       noViolations:      applicant.originalStatus !== 'Отклонена',
@@ -299,14 +281,15 @@ function loadWeights() {
     // Migrate legacy weight keys to new real-data keys
     if (w.subsidyHistory !== undefined && w.headCount === undefined) {
       return {
-        headCount:          w.subsidyHistory   ?? 0.30,
-        directionPriority:  w.productivity     ?? 0.25,
-        subsidyCategory:    w.farmProfile      ?? 0.20,
-        regionalComparison: w.socialEconomic   ?? 0.15,
-        applicationTiming:  w.riskAssessment   ?? 0.10,
+        headCount:          w.subsidyHistory   ?? 0.33,
+        directionPriority:  w.productivity     ?? 0.28,
+        subsidyCategory:    w.farmProfile      ?? 0.22,
+        regionalComparison: w.socialEconomic   ?? 0.17,
       };
     }
-    return w;
+    // Drop applicationTiming from any previously saved weights
+    const { applicationTiming: _drop, ...rest } = w;
+    return rest;
   } catch { return DEFAULT_WEIGHTS; }
 }
 
@@ -752,7 +735,7 @@ function exportToExcel(data, filename) {
     'Поголовье / Бас саны':   a.headCount,
     'Субсидия категориясы':   SUBSIDY_CATEGORY_LABELS[a.subsidyCategory] || a.subsidyCategory,
     'Өтінім күні':            a.applicationDate,
-    'Бастапқы мәртебе':       a.originalStatus || '—',
+
     'Балл (гибридный)':       a.hybridScore || a.totalScore,
     'Тәуекел':                a.riskLevel,
     'Ұсыным':                 a.recommendation,
@@ -849,7 +832,7 @@ function calcDataQuality(applicant) {
     { key:'applicationDate', label:'Өтінім күні',           required:true  },
     { key:'subsidyType',     label:'Субсидия түрі (толық)', required:false },
     { key:'appNum',          label:'Номер заявки',          required:false },
-    { key:'originalStatus',  label:'Бастапқы мәртебе',      required:false },
+
     { key:'annualRevenue',   label:'Жылдық айналым',        required:false },
     { key:'subsidyHistory',  label:'Субсидия тарихы',       required:false },
   ];
@@ -961,11 +944,10 @@ function calcSHAPExplanation(applicant, allApplicants) {
   const n = pool.length;
   // Real factors matching calculateScore() (Правила субсидирования №108)
   const factorDefs = [
-    { key: 'f1', name: 'Поголовье (масштаб)',          max: 30 },
-    { key: 'f2', name: 'Бағыт басымдылығы',            max: 25 },
-    { key: 'f3', name: 'Субсидия категориясы',         max: 20 },
-    { key: 'f4', name: 'Аймақтық салыстыру',           max: 15 },
-    { key: 'f5', name: 'Өтінім уақыты (§21 Правил)',   max: 10 },
+    { key: 'f1', name: 'Поголовье (масштаб)',  max: 30 },
+    { key: 'f2', name: 'Бағыт басымдылығы',   max: 25 },
+    { key: 'f3', name: 'Субсидия категориясы', max: 20 },
+    { key: 'f4', name: 'Аймақтық салыстыру',  max: 15 },
   ];
 
   const contributions = factorDefs.map(f => {
@@ -1053,7 +1035,6 @@ function _extractMLFeatures(a) {
   const dirP     = (a.dirPriorityScore || 0) / 25;
   const catP     = (a.normCatScore     || 0) / 20;
   const regP     = (a.amountScore      || 0) / 15;
-  const timP     = (a.applicationTiming || 5) / 10;
   const executed = (a.originalStatus === 'Исполнена') ? 1 : 0;
   const rejected = (a.originalStatus === 'Отклонена') ? 1 : 0;
   return [
@@ -1062,7 +1043,6 @@ function _extractMLFeatures(a) {
     dirP,
     catP,
     regP,
-    timP,
     executed,
     rejected,
   ];
@@ -1163,7 +1143,6 @@ function calcSuccessProbability(applicant) {
   const score    = (applicant.totalScore || 0) / 100;
   const dirP     = (applicant.dirPriorityScore || 0) / 25;
   const catP     = (applicant.normCatScore     || 0) / 20;
-  const timing   = (applicant.applicationTiming || 5) / 10;
   const hcRatio  = Math.min((applicant.hcRatio || 1), 5) / 5;
   const executed = (applicant.originalStatus === 'Исполнена') ? 1 : 0;
   const noViol   = (applicant.originalStatus !== 'Отклонена') ? 1 : 0;
@@ -1171,9 +1150,9 @@ function calcSuccessProbability(applicant) {
 
   // Sigmoid logit — weights calibrated to match real approval rates
   const z = 3.2*score + 1.5*dirP + 0.9*catP
-          + 0.8*timing + 0.6*hcRatio
+          + 0.6*hcRatio
           + 1.8*executed + 0.7*noViol + 0.5*prevSub
-          - 4.2;
+          - 3.8;
 
   const p = Math.round(100 / (1 + Math.exp(-z)));
   const probability = Math.min(Math.max(p, 5), 95);
@@ -1195,11 +1174,11 @@ function calibrateAdaptiveWeights(applicants) {
   if (!applicants || applicants.length < 5) {
     return { success: false, reason: 'Жеткіліксіз деректер — минимум 5 өтінім қажет' };
   }
-  const maxes   = { f1: 30, f2: 25, f3: 20, f4: 15, f5: 10 };
-  const keyMap  = { f1: 'headCount', f2: 'directionPriority', f3: 'subsidyCategory', f4: 'regionalComparison', f5: 'applicationTiming' };
-  const nameMap = { f1: 'Поголовье', f2: 'Бағыт басымдылығы', f3: 'Субсидия категориясы', f4: 'Аймақтық салыстыру', f5: 'Өтінім уақыты' };
+  const maxes   = { f1: 30, f2: 25, f3: 20, f4: 15 };
+  const keyMap  = { f1: 'headCount', f2: 'directionPriority', f3: 'subsidyCategory', f4: 'regionalComparison' };
+  const nameMap = { f1: 'Поголовье', f2: 'Бағыт басымдылығы', f3: 'Субсидия категориясы', f4: 'Аймақтық салыстыру' };
+  const factorKeys = ['f1','f2','f3','f4'];
 
-  const factorKeys = ['f1','f2','f3','f4','f5'];
   const variances = {};
   factorKeys.forEach(k => {
     const vals = applicants.map(a => (a.factors && a.factors[k] != null ? a.factors[k] : 0) / maxes[k]);
@@ -1216,12 +1195,10 @@ function calibrateAdaptiveWeights(applicants) {
     adaptiveRaw[keyMap[k]] = 0.6 * (variances[k] / totalVar) + 0.4 * base[keyMap[k]];
   });
 
-  // Normalize to sum = 1
   const tot = Object.values(adaptiveRaw).reduce((s, v) => s + v, 0);
   const adaptive = {};
-  Object.entries(adaptiveRaw).forEach(([k, v]) => { adaptive[k] = v / tot; });
+  factorKeys.forEach(k => { adaptive[keyMap[k]] = adaptiveRaw[keyMap[k]] / tot; });
 
-  // Human-readable explanations
   const explanations = {};
   factorKeys.forEach(k => {
     const wKey = keyMap[k];
@@ -1234,6 +1211,15 @@ function calibrateAdaptiveWeights(applicants) {
     else
       explanations[wKey] = `${nameMap[k]}: деректерде төмен вариативтілік (${varPct}%) → үлес кемді ${Math.round(diff*100)}%`;
   });
+
+  // Largest-remainder fix: ensure Math.round(v*100) values sum to exactly 100
+  const pcts = factorKeys.map(k => adaptive[keyMap[k]] * 100);
+  const floors = pcts.map(Math.floor);
+  const remainders = pcts.map((v, i) => v - floors[i]);
+  let deficit = 100 - floors.reduce((s, v) => s + v, 0);
+  remainders.map((r, i) => [r, i]).sort((a, b) => b[0] - a[0])
+    .forEach(([, i]) => { if (deficit > 0) { floors[i]++; deficit--; } });
+  factorKeys.forEach((k, i) => { adaptive[keyMap[k]] = floors[i] / 100; });
 
   return { success: true, adaptive, base, explanations, variances };
 }

@@ -59,7 +59,7 @@ function filterApplicants() {
   const anomaly    = document.getElementById('filter-anomaly')?.value||'';
 
   appState.filtered = AppState.applicants.filter(a => {
-    if (q && !a.name.toLowerCase().includes(q) && !a.iin.includes(q)) return false;
+    if (q && !( (a.appNum||'').toLowerCase().includes(q) || (a.name||'').toLowerCase().includes(q) || (a.iin||'').includes(q) || (a.region||'').toLowerCase().includes(q) || (a.direction||'').toLowerCase().includes(q) )) return false;
     if (region   && a.region !== region)           return false;
     if (district && a.district !== district)       return false;
     if (pType    && a.productionType !== pType)    return false;
@@ -106,33 +106,32 @@ function renderApplicantsTable() {
   if (countEl) countEl.textContent = formatNumber(filtered.length);
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="12"><div class="empty-state">
+    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state">
       <div class="empty-icon">🔍</div>
       <div class="empty-title">Нәтиже табылмады</div>
       <div class="empty-subtitle">Іздеу немесе сүзгі параметрлерін өзгертіп көріңіз</div>
       <button class="btn btn-outline" onclick="resetApplicantFilters()">Сүзгіні тазарту</button>
     </div></td></tr>`;
   } else {
-    const p = 'padding:7px 6px';
     tbody.innerHTML = rows.map((a, i) => {
       const score = a.hybridScore || a.totalScore;
       return `
       <tr class="${selected.has(a.id)?'selected':''}" style="animation-delay:${i*30}ms">
-        <td style="${p}"><input type="checkbox" class="row-cb" data-id="${a.id}" ${selected.has(a.id)?'checked':''} onchange="toggleSelect('${a.id}',this.checked)" style="accent-color:var(--primary);cursor:pointer"></td>
-        <td style="${p};color:var(--text-muted);font-size:11px">${a.rank}</td>
-        <td style="${p}"><span style="font-family:monospace;font-size:10px">${a.iin}</span></td>
-        <td style="${p}"><div style="font-weight:600;font-size:12px">${a.name}</div><div style="font-size:10px;color:var(--text-muted)">${a.entityType}</div></td>
-        <td style="${p}"><div style="font-size:11px">${a.district}</div><div style="font-size:10px;color:var(--text-muted)">${a.region}</div></td>
-        <td style="${p};font-size:11px">${a.productionType}</td>
-        <td style="${p};font-size:11px">${formatNumber(a.landArea)} га</td>
-        <td style="${p}"><span class="badge ${getScoreBadgeClass(score)} ${score>=90?'badge-pulse':''}" style="font-size:12px" title="Гибрид: ${a.hybridScore||'—'} / Бизнес: ${a.totalScore}">${score}</span></td>
-        <td style="${p}"><span class="badge ${a.clusterBadge||'cluster-mid'}" style="font-size:10px;white-space:nowrap">${a.clusterIcon||'📊'} ${a.clusterLabel||'—'}</span></td>
-        <td style="${p};font-size:11px;white-space:nowrap">${a.successProb ? '<span style="color:' + (a.successProb.probability>=70?'var(--success)':a.successProb.probability>=50?'var(--warning)':'var(--danger)') + ';font-weight:700">' + a.successProb.probability + '%</span>' : '—'}</td>
-        <td style="${p};font-size:11px;white-space:nowrap">${getRiskDot(a.riskLevel)} ${a.riskLevel}</td>
-        <td style="${p}"><span class="badge ${getStatusBadgeClass(a.recommendation)}" style="font-size:10px">${a.recommendation}</span></td>
-        <td style="${p};color:var(--text-muted);font-size:10px;white-space:nowrap">${a.applicationDate}</td>
-        <td style="${p}">
-          <div class="row-actions" style="opacity:1;gap:3px">
+        <td style="padding:10px 6px"><input type="checkbox" class="row-cb" data-id="${a.id}" ${selected.has(a.id)?'checked':''} onchange="toggleSelect('${a.id}',this.checked)" style="accent-color:var(--primary);cursor:pointer"></td>
+        <td style="padding:10px 6px;color:var(--text-muted);font-size:12px;font-weight:600">${a.rank}</td>
+        <td>
+          <div style="font-family:monospace;font-weight:700;font-size:13px;letter-spacing:0.3px;color:var(--text)">${a.appNum || a.id}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${a.region}</div>
+        </td>
+        <td><div style="font-size:13px;font-weight:500">${a.district}</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px">${(a.direction||a.productionType||'').replace('Субсидирование ','').replace('в ','').slice(0,22)}</div></td>
+        <td><span class="badge ${getScoreBadgeClass(score)} ${score>=90?'badge-pulse':''}" style="font-size:14px;padding:5px 10px;font-weight:800" title="Гибрид: ${a.hybridScore||'—'} / Бизнес: ${a.totalScore}">${score}</span></td>
+        <td><span class="badge ${a.clusterBadge||'cluster-mid'}" style="font-size:11px;white-space:nowrap;padding:4px 8px">${a.clusterIcon||'📊'} ${a.clusterLabel||'—'}</span></td>
+        <td style="font-size:13px;font-weight:700;white-space:nowrap">${a.successProb ? '<span style="color:' + (a.successProb.probability>=70?'var(--success)':a.successProb.probability>=50?'var(--warning)':'var(--danger)') + '">' + a.successProb.probability + '%</span>' : '—'}</td>
+        <td style="font-size:13px;white-space:nowrap">${getRiskDot(a.riskLevel)} ${a.riskLevel}</td>
+        <td><span class="badge ${getStatusBadgeClass(a.recommendation)}" style="font-size:11px;padding:4px 8px">${a.recommendation}</span></td>
+        <td style="color:var(--text-muted);font-size:12px;white-space:nowrap">${a.applicationDate}</td>
+        <td>
+          <div class="row-actions" style="opacity:1;gap:4px">
             <button class="action-btn" onclick="navigateTo('applicants/${a.id}')" title="Көру"><i class="fas fa-eye"></i></button>
             <button class="action-btn success" onclick="quickAddShortlist('${a.id}')" title="Shortlist"><i class="fas fa-star"></i></button>
             <button class="action-btn" onclick="showScoreQuick('${a.id}')" title="Балл"><i class="fas fa-chart-bar"></i></button>
@@ -239,6 +238,13 @@ function quickAddShortlist(id) {
   else showToast('⚠️ Бұл өтінім shortlist-те бар', 'warning', 2000);
 }
 
+function changeOriginalStatus(id, status) {
+  const a = AppState.getApplicant(id);
+  if (!a) return;
+  a.originalStatus = status;
+  AppState.save();
+}
+
 function showScoreQuick(id) {
   const a = AppState.getApplicant(id);
   if (!a) return;
@@ -249,8 +255,8 @@ function showScoreQuick(id) {
       <div style="font-size:36px;font-weight:800;color:${getScoreColor(score)};margin-top:-8px">${score}</div>
       <div style="font-size:12px;color:var(--text-muted)">Рейтинг: #${a.rank} / ${AppState.applicants.length}</div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:12px">
-      ${[{n:'Субсидия',s:a.factors?.f1||0,mx:25},{n:'Өнімділік',s:a.factors?.f2||0,mx:30},{n:'Профиль',s:a.factors?.f3||0,mx:20},{n:'Әлеум.',s:a.factors?.f4||0,mx:15},{n:'Тәуекел',s:a.factors?.f5||0,mx:10}]
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px">
+      ${[{n:'Поголовье',s:a.factors?.f1||0,mx:30},{n:'Бағыт',s:a.factors?.f2||0,mx:25},{n:'Категория',s:a.factors?.f3||0,mx:20},{n:'Аймақ',s:a.factors?.f4||0,mx:15}]
       .map(f=>`<div style="text-align:center;background:var(--bg);padding:8px;border-radius:8px">
         <div style="font-size:16px;font-weight:700;color:var(--primary)">${f.s}</div>
         <div style="font-size:9px;color:var(--text-muted);margin-top:2px">${f.n}</div>

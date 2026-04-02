@@ -29,7 +29,6 @@ function initSettings() {
       {key:'directionPriority',  label:'Стратегиялық бағыт',                color:'#2E7D32', hint:'Скотоводство > Птицеводство > Овцеводство'},
       {key:'subsidyCategory',    label:'Субсидия категориясы',               color:'#388E3C', hint:'Племенная покупка > Селекция > Производство'},
       {key:'regionalComparison', label:'Аймақтық салыстыру',                 color:'#F9A825', hint:'Аймақ медианымен салыстыру'},
-      {key:'applicationTiming',  label:'Өтінім уақыты (§21 Правил)',         color:'#1565C0', hint:'Ерте өтінім = жоғары кезек приоритеті'},
     ];
     container.innerHTML = wDefs.map(w => `
       <div class="weight-item">
@@ -107,14 +106,14 @@ function applyAdaptiveWeights() {
 }
 
 function updateWeightTotal() {
-  const keys = ['headCount','directionPriority','subsidyCategory','regionalComparison','applicationTiming'];
+  const keys = ['headCount','directionPriority','subsidyCategory','regionalComparison'];
   const total = keys.reduce((s,k) => { const el=document.getElementById(`ws-${k}`); return s+(el?parseInt(el.value):0); }, 0);
   const tw = document.getElementById('weight-total'); if(tw) tw.textContent = total+'%';
   const wrap = document.getElementById('weight-total-wrap'); if(wrap) wrap.classList.toggle('error', total!==100);
 }
 
 function saveAndRecalculate() {
-  const keys = ['headCount','directionPriority','subsidyCategory','regionalComparison','applicationTiming'];
+  const keys = ['headCount','directionPriority','subsidyCategory','regionalComparison'];
   let total = 0;
   const weights = {};
   keys.forEach(k => { const v=parseInt(document.getElementById(`ws-${k}`)?.value||0); weights[k]=v/100; total+=v; });
