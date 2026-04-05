@@ -3,6 +3,47 @@
 // ─── APPLICANTS PAGE ──────────────────────────────────────────────────────────
 const appState = { filtered:[], page:1, perPage:25, sortCol:'hybridScore', sortDir:'desc', selected:new Set() };
 
+// Re-render on language change
+window.addEventListener('langchange', () => {
+  const page = document.getElementById('page-applicants');
+  if (page && page.classList.contains('active')) {
+    renderApplicantsTable();
+    updateBulkBar();
+    updateApplicantsHeader();
+  }
+});
+
+function updateApplicantsHeader() {
+  // Update table column headers
+  const headers = {
+    'th-appnum':  t('appColAppNum'),
+    'th-region':  t('appColRegion'),
+    'th-score':   t('appColScore2'),
+    'th-cluster': t('appColCluster'),
+    'th-prob':    t('appColProb'),
+    'th-risk':    t('appColRisk2'),
+    'th-rec':     t('appColRec'),
+    'th-date':    t('date'),
+    'th-actions': t('actions'),
+  };
+  Object.entries(headers).forEach(([id, text]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  });
+  // Update apps count text
+  const countEl = document.getElementById('apps-count-label');
+  if (countEl) countEl.textContent = t('appFoundCount');
+  // Filter placeholders
+  const filterIds = {
+    'filter-cluster': t('appFilterCluster'),
+    'filter-anomaly': t('appFilterAnomaly'),
+  };
+  Object.entries(filterIds).forEach(([id, text]) => {
+    const el = document.getElementById(id);
+    if (el && el.options[0]) el.options[0].textContent = text;
+  });
+}
+
 function initApplicants() {
   populateRegionFilter();
   appState.filtered = [...AppState.applicants];
@@ -83,7 +124,7 @@ function filterApplicants() {
 
   const activeCnt = ['filter-region','filter-district','filter-type','filter-score','filter-status','filter-cluster','filter-anomaly'].filter(id=>document.getElementById(id)?.value).length;
   const badge = document.getElementById('filter-badge');
-  if (badge) { badge.textContent = activeCnt > 0 ? `${activeCnt} сүзгі белсенді` : ''; badge.style.display = activeCnt > 0 ? 'inline-flex' : 'none'; }
+  if (badge) { badge.textContent = activeCnt > 0 ? `${activeCnt} ${t('filterActive')}` : ''; badge.style.display = activeCnt > 0 ? 'inline-flex' : 'none'; }
 }
 
 function sortApplicants() {
@@ -108,9 +149,9 @@ function renderApplicantsTable() {
   if (!rows.length) {
     tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state">
       <div class="empty-icon">🔍</div>
-      <div class="empty-title">Нәтиже табылмады</div>
-      <div class="empty-subtitle">Іздеу немесе сүзгі параметрлерін өзгертіп көріңіз</div>
-      <button class="btn btn-outline" onclick="resetApplicantFilters()">Сүзгіні тазарту</button>
+      <div class="empty-title">${t('appNoResults')}</div>
+      <div class="empty-subtitle">${t('appNoResultsHint')}</div>
+      <button class="btn btn-outline" onclick="resetApplicantFilters()">${t('clearFilters')}</button>
     </div></td></tr>`;
   } else {
     tbody.innerHTML = rows.map((a, i) => {
@@ -125,10 +166,10 @@ function renderApplicantsTable() {
         </td>
         <td><div style="font-size:13px;font-weight:500">${a.district}</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px">${(a.direction||a.productionType||'').replace('Субсидирование ','').replace('в ','').slice(0,22)}</div></td>
         <td><span class="badge ${getScoreBadgeClass(score)} ${score>=90?'badge-pulse':''}" style="font-size:14px;padding:5px 10px;font-weight:800" title="Гибрид: ${a.hybridScore||'—'} / Бизнес: ${a.totalScore}">${score}</span></td>
-        <td><span class="badge ${a.clusterBadge||'cluster-mid'}" style="font-size:11px;white-space:nowrap;padding:4px 8px">${a.clusterIcon||'📊'} ${a.clusterLabel||'—'}</span></td>
+        <td><span class="badge ${a.clusterBadge||'cluster-mid'}" style="font-size:11px;white-space:nowrap;padding:4px 8px">${a.clusterIcon||'📊'} ${tCluster(a.clusterLabel)}</span></td>
         <td style="font-size:13px;font-weight:700;white-space:nowrap">${a.successProb ? '<span style="color:' + (a.successProb.probability>=70?'var(--success)':a.successProb.probability>=50?'var(--warning)':'var(--danger)') + '">' + a.successProb.probability + '%</span>' : '—'}</td>
-        <td style="font-size:13px;white-space:nowrap">${getRiskDot(a.riskLevel)} ${a.riskLevel}</td>
-        <td><span class="badge ${getStatusBadgeClass(a.recommendation)}" style="font-size:11px;padding:4px 8px">${a.recommendation}</span></td>
+        <td style="font-size:13px;white-space:nowrap">${getRiskDot(a.riskLevel)} ${tRisk(a.riskLevel)}</td>
+        <td><span class="badge ${getStatusBadgeClass(a.recommendation)}" style="font-size:11px;padding:4px 8px">${tRec(a.recommendation)}</span></td>
         <td style="color:var(--text-muted);font-size:12px;white-space:nowrap">${a.applicationDate}</td>
         <td>
           <div class="row-actions" style="opacity:1;gap:4px">
@@ -171,7 +212,7 @@ function updateBulkBar() {
   const n = appState.selected.size;
   bar.classList.toggle('hidden', n === 0);
   const el = document.getElementById('bulk-count');
-  if (el) el.textContent = `${n} жазба таңдалды`;
+  if (el) el.textContent = `${n} ${t('appBulkSelected')}`;
 }
 
 function clearBulkSelection() { appState.selected.clear(); renderApplicantsTable(); }

@@ -44,9 +44,9 @@
   <div class="login-right">
     <div class="login-card">
       <div class="lang-group" style="justify-content:flex-end;margin-bottom:16px">
-        <button class="lang-btn active" data-lang="kk">🇰🇿 ҚАЗ</button>
-        <button class="lang-btn" data-lang="ru">🇷🇺 РУС</button>
-        <button class="lang-btn" data-lang="en">🇬🇧 ENG</button>
+        <button class="lang-btn active" data-lang="kk"><span class="lang-flag">🇰🇿</span><span class="lang-code">ҚАЗ</span></button>
+        <button class="lang-btn" data-lang="ru"><span class="lang-flag">🇷🇺</span><span class="lang-code">РУС</span></button>
+        <button class="lang-btn" data-lang="en"><span class="lang-flag">🇬🇧</span><span class="lang-code">ENG</span></button>
       </div>
       <div class="login-card-header">
         <div class="ministry-logo"><i class="fas fa-leaf"></i></div>
@@ -77,12 +77,15 @@
         <button type="submit" id="login-btn" class="btn btn-primary btn-block btn-lg" style="margin-bottom:12px">
           <i class="fas fa-sign-in-alt"></i> <span data-i18n="loginBtn">Кіру</span>
         </button>
-        <button type="button" class="btn btn-outline btn-block" onclick="showEDSModal()">
+        <button type="button" id="eds-btn" class="btn btn-outline btn-block" onclick="loginWithEDS()" style="position:relative;overflow:hidden">
           <i class="fas fa-shield-alt"></i> <span data-i18n="loginEDS">ЭЦҚ арқылы кіру</span>
         </button>
         <div id="login-error" style="display:none;margin-bottom:12px;padding:10px 14px;background:#FFEBEE;border:1px solid #EF9A9A;border-radius:8px;font-size:13px;color:var(--danger);text-align:center"></div>
+        <div style="text-align:center;margin-top:4px;font-size:11px;color:var(--text-muted)" data-i18n-html="ncaLayerHint">
+          ЭЦҚ пайдалану үшін <a href="https://pki.gov.kz/ncalayer/" target="_blank" style="color:var(--primary);text-decoration:none">NCALayer</a> бағдарламасы орнатылуы керек
+        </div>
         <div style="margin-top:16px;padding:10px;background:var(--accent-light);border-radius:8px;font-size:12px;color:var(--text-muted);text-align:center">
-          💡 Demo тіркелгілер: <b>admin</b> / <b>AgriScore2025!</b>
+          💡 <span data-i18n="loginDemoHint">Demo тіркелгілер</span>: <b>admin</b> / <b>AgriScore2025!</b>
         </div>
       </form>
     </div>
@@ -93,6 +96,9 @@
      APP SHELL
 ══════════════════════════════════════ -->
 <div id="app-shell" class="hidden">
+  <!-- Hidden sync state elements (used by audit.js) -->
+  <span id="sync-dot" style="display:none"></span>
+  <span id="sync-label" style="display:none"></span>
 
   <!-- NAVBAR -->
   <nav id="top-navbar">
@@ -100,21 +106,15 @@
     <span class="navbar-title" id="navbar-title">Басқару тақтасы</span>
     <div class="navbar-right">
       <button class="navbar-icon-btn" id="search-btn"><i class="fas fa-search"></i></button>
-      <div class="dropdown" id="notif-wrap">
-        <button class="navbar-icon-btn" id="notif-btn">
-          <i class="fas fa-bell"></i><span class="notif-badge">3</span>
-        </button>
-        <div class="dropdown-menu notif-dropdown" id="notif-dropdown">
-          <div class="notif-header">Хабарламалар</div>
-          <div class="notif-item"><div class="notif-icon" style="background:#E8F5E9;color:#1B5E20"><i class="fas fa-check"></i></div><div><div class="notif-text">891 өтінім shortlist-ке қосылды</div><div class="notif-time">10 мин бұрын</div></div></div>
-          <div class="notif-item"><div class="notif-icon" style="background:#FFF8E1;color:#F57F17"><i class="fas fa-clock"></i></div><div><div class="notif-text">Комиссия мерзімі: 14 күн қалды</div><div class="notif-time">1 сағат бұрын</div></div></div>
-          <div class="notif-item"><div class="notif-icon" style="background:#E3F2FD;color:#1565C0"><i class="fas fa-upload"></i></div><div><div class="notif-text">Жаңа деректер жүктелді: 50 жазба</div><div class="notif-time">2 сағат бұрын</div></div></div>
-        </div>
-      </div>
-      <div class="lang-group">
-        <button class="lang-btn active" data-lang="kk">🇰🇿 ҚАЗ</button>
-        <button class="lang-btn" data-lang="ru">🇷🇺 РУС</button>
-        <button class="lang-btn" data-lang="en">🇬🇧 ENG</button>
+      <button class="navbar-icon-btn" id="theme-toggle-btn" onclick="toggleDarkMode()" title="Тақырыпты өзгерту">
+        <i class="fas fa-moon" id="theme-icon"></i>
+      </button>
+      <div class="lang-flat">
+        <button class="lang-flat-btn active" data-lang="kk">kz</button>
+        <span class="lang-flat-sep">|</span>
+        <button class="lang-flat-btn" data-lang="ru">ru</button>
+        <span class="lang-flat-sep">|</span>
+        <button class="lang-flat-btn" data-lang="en">en</button>
       </div>
       <div class="dropdown" id="avatar-wrap">
         <div class="avatar-btn" id="navbar-avatar">A</div>
@@ -155,6 +155,7 @@
       <div class="nav-item" data-page="methodology"><i class="fas fa-book-open"></i><span>Методология</span><span class="nav-tooltip">Методология</span></div>
       <div class="nav-section-label" style="margin-top:8px">Жүйе</div>
       <div class="nav-item" data-page="upload"><i class="fas fa-upload"></i><span data-i18n="navUpload">Деректер жүктеу</span><span class="nav-tooltip">Деректер жүктеу</span></div>
+      <div class="nav-item" data-page="audit"><i class="fas fa-history"></i><span>Аудит журналы</span><span class="nav-tooltip">Аудит</span></div>
       <div class="nav-item" data-page="settings"><i class="fas fa-cog"></i><span data-i18n="navSettings">Параметрлер</span><span class="nav-tooltip">Параметрлер</span></div>
     </nav>
     <div class="sidebar-footer">
@@ -167,6 +168,9 @@
 
     <!-- ── DASHBOARD ── -->
     <section class="page" id="page-dashboard">
+      <!-- Real dataset banner -->
+      <div id="real-dataset-banner" style="display:none;background:linear-gradient(135deg,var(--primary-pale,#E8F5E9),#F1F8E9);border:1px solid var(--primary-light,#A5D6A7);border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:13px"></div>
+
       <div class="page-header">
         <div class="page-header-left">
           <h1 data-i18n="dashTitle">Басқару тақтасы</h1>
@@ -180,7 +184,7 @@
       </div>
       <div class="alert alert-warning mb-4">
         <i class="fas fa-exclamation-triangle alert-icon"></i>
-        <div class="alert-content"><div class="alert-title">⚠️ Назар аударыңыз</div><span data-i18n="dashAlertText">Комиссия мерзіміне 14 күн қалды.</span></div>
+        <div class="alert-content"><div class="alert-title" data-i18n="dashAlertTitle">⚠️ Назар аударыңыз</div><span data-i18n="dashAlertText">Комиссия мерзіміне 14 күн қалды.</span></div>
         <button class="btn btn-sm btn-accent" onclick="navigateTo('shortlist')" data-i18n="dashViewList">Тізімді көру →</button>
       </div>
       <div class="kpi-grid">
@@ -245,6 +249,8 @@
           <div id="dash-cluster-dist"></div>
         </div>
       </div>
+
+
     </section>
 
     <!-- ── APPLICANTS ── -->
@@ -252,7 +258,7 @@
       <div class="page-header">
         <div class="page-header-left">
           <h1 data-i18n="appListTitle">Өтінімдер тізімі</h1>
-          <p><span id="apps-count">0</span> өтінім табылды</p>
+          <p><span id="apps-count">0</span> <span id="apps-count-label" data-i18n="appFoundCount">өтінім табылды</span></p>
         </div>
         <div class="page-header-right">
           <button class="btn btn-primary btn-sm" onclick="exportToExcel(AppState.applicants,'AgriScore_Export')"><i class="fas fa-file-excel"></i> Excel</button>
@@ -320,15 +326,15 @@
             <tr>
               <th style="width:36px;padding:10px 6px"><input type="checkbox" id="select-all-cb" style="accent-color:var(--primary);cursor:pointer"></th>
               <th style="width:36px;padding:10px 6px">#</th>
-              <th style="width:200px" data-sort="appNum" class="sortable">Номер заявки</th>
-              <th style="width:170px" data-sort="district" class="sortable">Аудан / Облыс</th>
-              <th style="width:72px" data-sort="totalScore" class="sortable sort-desc">Балл ↕</th>
-              <th style="width:140px">Кластер</th>
-              <th style="width:72px">Ықтим.</th>
-              <th style="width:90px">Тәуекел</th>
-              <th style="width:105px" data-sort="recommendation" class="sortable">Ұсыным</th>
-              <th style="width:95px" data-sort="applicationDate" class="sortable">Күні</th>
-              <th style="width:95px">Әрекет</th>
+              <th id="th-appnum"  style="width:200px" data-sort="appNum" class="sortable" data-i18n="appColAppNum">Номер заявки</th>
+              <th id="th-region"  style="width:170px" data-sort="district" class="sortable" data-i18n="appColRegion">Аудан / Облыс</th>
+              <th id="th-score"   style="width:72px" data-sort="totalScore" class="sortable sort-desc" data-i18n="appColScore2">Балл</th>
+              <th id="th-cluster" style="width:140px" data-i18n="appColCluster">Кластер</th>
+              <th id="th-prob"    style="width:72px" data-i18n="appColProb">Ықтим.</th>
+              <th id="th-risk"    style="width:90px" data-i18n="appColRisk2">Тәуекел</th>
+              <th id="th-rec"     style="width:105px" data-sort="recommendation" class="sortable" data-i18n="appColRec">Ұсыным</th>
+              <th id="th-date"    style="width:95px" data-sort="applicationDate" class="sortable" data-i18n="date">Күні</th>
+              <th id="th-actions" style="width:95px" data-i18n="actions">Әрекет</th>
             </tr>
           </thead>
           <tbody id="applicants-tbody">
@@ -473,7 +479,7 @@
       </div>
       <div class="table-wrapper">
         <table>
-          <thead><tr><th style="width:36px">⋮⋮</th><th>#</th><th>Аты-жөні</th><th>Аудан</th><th>Балл</th><th>Сұралған ₸</th><th>Ұсынылған ₸</th><th>Мәртебе</th><th>🗑</th></tr></thead>
+          <thead><tr><th style="width:36px" data-i18n="shortlistThDrag">⋮⋮</th><th data-i18n="shortlistThNum">#</th><th data-i18n="shortlistColName">Аты-жөні</th><th data-i18n="shortlistColDistrict">Аудан</th><th data-i18n="shortlistColScore">Балл</th><th data-i18n="shortlistColRequested">Сұралған ₸</th><th data-i18n="shortlistColRecommended">Ұсынылған ₸</th><th data-i18n="shortlistColStatus">Мәртебе</th><th data-i18n="shortlistThDelete">🗑</th></tr></thead>
           <tbody id="shortlist-tbody"></tbody>
         </table>
       </div>
@@ -497,13 +503,141 @@
           <button class="btn btn-primary btn-sm" onclick="refreshAnalytics()"><i class="fas fa-sync-alt"></i> Жаңарту</button>
         </div>
       </div>
+
+      <!-- Model Performance Metrics -->
+      <div class="card" style="margin-bottom:20px" id="model-metrics-card">
+        <div class="card-header">
+          <span class="card-title">🧠 Модель сапасы — Classifier Performance</span>
+          <span class="badge" style="background:#E8F5E9;color:#1B5E20;font-size:11px">Proxy Logistic Regression</span>
+        </div>
+        <div id="model-metrics-body" style="padding:16px">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px">
+            <div class="metric-card-sm" style="text-align:center;padding:14px;background:var(--bg);border-radius:10px">
+              <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Accuracy</div>
+              <div id="m-accuracy" style="font-size:28px;font-weight:800;color:#1B5E20">—</div>
+              <div style="font-size:10px;color:var(--text-muted)">(TP+TN)/All</div>
+            </div>
+            <div class="metric-card-sm" style="text-align:center;padding:14px;background:var(--bg);border-radius:10px">
+              <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Precision</div>
+              <div id="m-precision" style="font-size:28px;font-weight:800;color:#1565C0">—</div>
+              <div style="font-size:10px;color:var(--text-muted)">TP/(TP+FP)</div>
+            </div>
+            <div class="metric-card-sm" style="text-align:center;padding:14px;background:var(--bg);border-radius:10px">
+              <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Recall</div>
+              <div id="m-recall" style="font-size:28px;font-weight:800;color:#E65100">—</div>
+              <div style="font-size:10px;color:var(--text-muted)">TP/(TP+FN)</div>
+            </div>
+            <div class="metric-card-sm" style="text-align:center;padding:14px;background:var(--bg);border-radius:10px">
+              <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">F1-Score</div>
+              <div id="m-f1" style="font-size:28px;font-weight:800;color:#7B1FA2">—</div>
+              <div style="font-size:10px;color:var(--text-muted)">2·P·R/(P+R)</div>
+            </div>
+          </div>
+          <!-- Confusion Matrix + Feature Importance -->
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start">
+            <div>
+              <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">Confusion Matrix</div>
+              <table id="confusion-matrix" style="border-collapse:collapse;font-size:12px">
+                <tr>
+                  <td style="padding:4px 8px;font-size:11px;color:var(--text-muted)"></td>
+                  <td style="padding:4px 12px;text-align:center;font-size:11px;color:var(--text-muted);font-weight:600">Predicted +</td>
+                  <td style="padding:4px 12px;text-align:center;font-size:11px;color:var(--text-muted);font-weight:600">Predicted −</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 8px;font-size:11px;color:var(--text-muted);font-weight:600">Actual +</td>
+                  <td id="cm-tp" style="padding:14px 20px;text-align:center;font-size:20px;font-weight:800;background:#E8F5E9;border-radius:8px 0 0 0;color:#1B5E20">—</td>
+                  <td id="cm-fn" style="padding:14px 20px;text-align:center;font-size:20px;font-weight:800;background:#FFEBEE;border-radius:0 8px 0 0;color:#C62828">—</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 8px;font-size:11px;color:var(--text-muted);font-weight:600">Actual −</td>
+                  <td id="cm-fp" style="padding:14px 20px;text-align:center;font-size:20px;font-weight:800;background:#FFF3E0;border-radius:0 0 0 8px;color:#E65100">—</td>
+                  <td id="cm-tn" style="padding:14px 20px;text-align:center;font-size:20px;font-weight:800;background:#E3F2FD;border-radius:0 0 8px 0;color:#1565C0">—</td>
+                </tr>
+              </table>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:6px">+ = Исполнена, − = Отклонена</div>
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text-secondary)">Feature Importance (Weight × Score)</div>
+              <div id="feature-importance-bars"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real Dataset Stats -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <span class="card-title">📊 Нақты деректер базасы — subsidy.plem.kz 2025</span>
+          <span class="badge" style="background:#FFF3E0;color:#E65100;font-size:11px">36,651 өтінім</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px">
+          <div>
+            <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)">Бағыттар бойынша</div>
+            <div class="chart-wrapper-tall"><canvas id="real-direction-chart"></canvas></div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)">Өтінім мәртебесі (нақты)</div>
+            <div class="chart-wrapper-tall"><canvas id="real-status-chart"></canvas></div>
+          </div>
+        </div>
+      </div>
+
       <div class="analytics-grid">
-        <div class="card"><div class="card-header"><span class="card-title">Облыстар бойынша</span></div><div class="chart-wrapper-tall"><canvas id="regional-chart"></canvas></div></div>
-        <div class="card"><div class="card-header"><span class="card-title">Субсидия түрлері</span></div><div class="chart-wrapper-tall"><canvas id="type-chart"></canvas></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">Облыстар бойынша (нақты)</span></div><div class="chart-wrapper-tall"><canvas id="regional-chart"></canvas></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">Бал бөлінісі</span><span class="badge" style="background:#EDE7F6;color:#7B1FA2;font-size:11px">Score dist.</span></div><div class="chart-wrapper-tall"><canvas id="type-chart"></canvas></div></div>
         <div class="card"><div class="card-header"><span class="card-title">3 жылдық динамика</span></div><div class="chart-wrapper-tall"><canvas id="trend-chart"></canvas></div></div>
-        <div class="card"><div class="card-header"><span class="card-title">Алаң vs Өнімділік</span></div><div class="chart-wrapper-tall"><canvas id="scatter-chart"></canvas></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">Бас саны vs Балл</span></div><div class="chart-wrapper-tall"><canvas id="scatter-chart"></canvas></div></div>
         <div class="card"><div class="card-header"><span class="card-title">🤖 ML Кластер бөлінісі</span><span class="badge" style="background:#EDE7F6;color:#7B1FA2;font-size:11px">K-means</span></div><div class="chart-wrapper-tall"><canvas id="cluster-chart"></canvas></div></div>
         <div class="card"><div class="card-header"><span class="card-title">📈 Сәтті игеру ықтималдығы</span><span class="badge" style="background:#E8F5E9;color:#1B5E20;font-size:11px">Proxy LR</span></div><div class="chart-wrapper-tall"><canvas id="probability-chart"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- ── AUDIT ── -->
+    <section class="page" id="page-audit">
+      <div class="page-header">
+        <div class="page-header-left"><h1>Аудит журналы</h1><p>Жүйедегі барлық әрекеттердің тізімі</p></div>
+        <div class="page-header-right">
+          <button class="btn btn-outline btn-sm" onclick="exportAuditCSV()"><i class="fas fa-download"></i> CSV экспорт</button>
+          <button class="btn btn-primary btn-sm" onclick="loadAuditLog()"><i class="fas fa-sync-alt"></i> Жаңарту</button>
+        </div>
+      </div>
+      <!-- KPI cards -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px">
+        <div class="kpi-card"><div class="kpi-icon" style="background:#E8F5E9"><i class="fas fa-history" style="color:#1B5E20"></i></div><div class="kpi-body"><div class="kpi-value" id="audit-total">0</div><div class="kpi-label">Жалпы әрекет</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon" style="background:#E3F2FD"><i class="fas fa-sync" style="color:#1565C0"></i></div><div class="kpi-body"><div class="kpi-value" id="audit-syncs">0</div><div class="kpi-label">Синхронизация</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon" style="background:#FFF3E0"><i class="fas fa-user-check" style="color:#E65100"></i></div><div class="kpi-body"><div class="kpi-value" id="audit-reviews">0</div><div class="kpi-label">Адам шешімдері</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon" style="background:#EDE7F6"><i class="fas fa-users" style="color:#7B1FA2"></i></div><div class="kpi-body"><div class="kpi-value" id="audit-users">0</div><div class="kpi-label">Белсенді қолданушы</div></div></div>
+      </div>
+      <!-- Filter row -->
+      <div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <select id="audit-filter-action" class="form-control" style="width:160px;font-size:13px" onchange="filterAuditTable()">
+          <option value="">Барлық әрекет</option>
+          <option value="sync">Синхронизация</option>
+          <option value="review">Шешім</option>
+          <option value="login">Кіру</option>
+        </select>
+        <input id="audit-filter-user" type="text" class="form-control" placeholder="Қолданушы..." style="width:160px;font-size:13px" oninput="filterAuditTable()">
+        <span style="font-size:12px;color:var(--text-muted);margin-left:auto" id="audit-count-label"></span>
+      </div>
+      <!-- Table -->
+      <div class="card" style="overflow:hidden">
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+              <tr style="background:var(--bg);border-bottom:2px solid var(--border)">
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase">Уақыт</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase">Әрекет</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase">Қолданушы</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase">Мәліметтер</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase">AI vs Адам</th>
+              </tr>
+            </thead>
+            <tbody id="audit-tbody">
+              <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Жүктелуде...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="audit-pagination" style="display:flex;justify-content:center;gap:8px;padding:12px;border-top:1px solid var(--border)"></div>
       </div>
     </section>
 
@@ -512,6 +646,62 @@
       <div class="page-header">
         <div class="page-header-left"><h1>Деректер жүктеу</h1><p>Excel немесе CSV форматы</p></div>
       </div>
+
+      <!-- subsidy.plem.kz integration banner -->
+      <div class="card" style="margin-bottom:20px;border:2px solid #1565C0;overflow:hidden">
+        <div style="background:linear-gradient(135deg,#1565C0,#1976D2);padding:16px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="fas fa-globe" style="color:#fff;font-size:20px"></i>
+          </div>
+          <div style="flex:1;min-width:200px">
+            <div style="font-size:15px;font-weight:700;color:#fff">subsidy.plem.kz — Мемлекеттік дерекқор</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.8);margin-top:2px">ҚР АШМ ресми субсидия жүйесі · 36,651+ нақты өтінім · 2025 жыл</div>
+          </div>
+          <a href="https://subsidy.plem.kz" target="_blank" rel="noopener" class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);flex-shrink:0">
+            <i class="fas fa-external-link-alt"></i> Сайтқа өту
+          </a>
+        </div>
+        <div style="padding:16px 20px;background:var(--bg-surface,#fff)">
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text-secondary)">
+            <i class="fas fa-info-circle" style="color:#1565C0"></i> subsidy.plem.kz сайтынан деректерді қалай жүктеу керек:
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="width:24px;height:24px;border-radius:50%;background:#1565C0;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</span>
+              <div>
+                <div style="font-size:13px;font-weight:600">Кіріңіз</div>
+                <div style="font-size:11px;color:var(--text-muted)">subsidy.plem.kz сайтына ЭЦП немесе логин арқылы кіріңіз</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="width:24px;height:24px;border-radius:50%;background:#1565C0;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</span>
+              <div>
+                <div style="font-size:13px;font-weight:600">Тізімге өтіңіз</div>
+                <div style="font-size:11px;color:var(--text-muted)">«Өтінімдер тізімі» → фильтрді орнатыңыз (облыс, бағыт, мерзім)</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="width:24px;height:24px;border-radius:50%;background:#1565C0;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</span>
+              <div>
+                <div style="font-size:13px;font-weight:600">Excel жүктеңіз</div>
+                <div style="font-size:11px;color:var(--text-muted)">«Экспорт» → «Excel» батырмасын басыңыз → .xlsx файлы жүктеледі</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="width:24px;height:24px;border-radius:50%;background:#1565C0;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">4</span>
+              <div>
+                <div style="font-size:13px;font-weight:600">AgriScore-қа жүктеңіз</div>
+                <div style="font-size:11px;color:var(--text-muted)">Төмендегі аймаққа файлды сүйреңіз немесе «Файлды таңдау» батырмасын басыңыз</div>
+              </div>
+            </div>
+          </div>
+          <div style="background:#E3F2FD;border-radius:8px;padding:10px 14px;font-size:12px;color:#0D47A1">
+            <i class="fas fa-columns"></i> <b>Күтілетін баған атаулары:</b>
+            Дата өтінімі · № өтінімі · Бағыт · Мәртебе · Норматив · Сомасы · Облыс · Аудан
+          </div>
+        </div>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
         <div>
           <div class="card" style="padding:24px">
@@ -578,11 +768,12 @@
             </div>
           </div>
           <div class="settings-section">
-            <h3><i class="fas fa-language"></i> Тіл</h3>
-            <div class="lang-group">
-              <button class="lang-btn" data-lang="kk">🇰🇿 ҚАЗ</button>
-              <button class="lang-btn" data-lang="ru">🇷🇺 РУС</button>
-              <button class="lang-btn" data-lang="en">🇬🇧 ENG</button>
+            <h3><i class="fas fa-language"></i> Тіл / Язык / Language</h3>
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Интерфейс тілін таңдаңыз — барлық беттерде автоматты өзгереді</p>
+            <div class="lang-group lang-group-lg">
+              <button class="lang-btn" data-lang="kk"><span class="lang-flag">🇰🇿</span><span class="lang-code">ҚАЗ</span></button>
+              <button class="lang-btn" data-lang="ru"><span class="lang-flag">🇷🇺</span><span class="lang-code">РУС</span></button>
+              <button class="lang-btn" data-lang="en"><span class="lang-flag">🇬🇧</span><span class="lang-code">ENG</span></button>
             </div>
           </div>
           <div class="settings-section">
@@ -639,10 +830,10 @@
         <div class="card">
           <div class="card-header">
             <span class="card-title">Пайдаланушылар</span>
-            <button class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Қосу</button>
+            <button class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> <span data-i18n="settingsAddUserBtn">Қосу</span></button>
           </div>
           <div class="table-wrapper" style="box-shadow:none">
-            <table><thead><tr><th>Аты-жөні</th><th>Рөл</th><th>Соңғы кіру</th><th>Әрекет</th></tr></thead>
+            <table><thead><tr><th data-i18n="settingsColName">Аты-жөні</th><th data-i18n="settingsColRole">Рөл</th><th data-i18n="settingsColLastLogin">Соңғы кіру</th><th data-i18n="actions">Әрекет</th></tr></thead>
             <tbody id="users-tbody"></tbody></table>
           </div>
         </div>
@@ -872,6 +1063,166 @@
   </nav>
 </div>
 
+<!-- TELEGRAM CHAT WIDGET -->
+<div id="tg-widget">
+  <!-- Popup window -->
+  <div id="tg-popup" class="tg-popup hidden">
+    <div class="tg-popup-header">
+      <div class="tg-popup-avatar">
+        <svg viewBox="0 0 24 24" fill="white" width="22" height="22"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.24 13.985l-2.95-.924c-.642-.2-.654-.642.136-.953l11.527-4.448c.535-.194 1.003.131.609.588z"/></svg>
+      </div>
+      <div class="tg-popup-info">
+        <div class="tg-popup-name">AgriScore KZ</div>
+        <div class="tg-popup-status"><span class="tg-online-dot"></span>Онлайн қолдау</div>
+      </div>
+      <button class="tg-close-btn" onclick="toggleTgWidget()" aria-label="Жабу">×</button>
+    </div>
+    <div class="tg-popup-body">
+      <div class="tg-message-bubble">
+        <div class="tg-message-text">Сәлем! 👋 AgriScore KZ қолдау қызметіне қош келдіңіз.<br><br>Скоринг жүйесі бойынша сұрақтарыңыз болса — телеграм арнамызға жазыңыз, жауап береміз.</div>
+        <div class="tg-message-time">Бүгін</div>
+      </div>
+      <div class="tg-message-bubble">
+        <div class="tg-message-text">📋 Сұрақтар:<br>• Өтінім скорингі<br>• Жүйе нұсқаулығы<br>• Техникалық қолдау</div>
+        <div class="tg-message-time">Бүгін</div>
+      </div>
+    </div>
+    <div class="tg-popup-footer">
+      <a href="https://t.me/AgriScoreKZ_AI_bot" target="_blank" class="tg-open-btn">
+        <svg viewBox="0 0 24 24" fill="white" width="16" height="16"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.24 13.985l-2.95-.924c-.642-.2-.654-.642.136-.953l11.527-4.448c.535-.194 1.003.131.609.588z"/></svg>
+        Telegram-да жазу
+      </a>
+    </div>
+  </div>
+
+  <!-- Floating button -->
+  <button class="tg-fab" onclick="toggleTgWidget()" aria-label="Telegram чат">
+    <svg id="tg-fab-icon" viewBox="0 0 24 24" fill="white" width="26" height="26"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.24 13.985l-2.95-.924c-.642-.2-.654-.642.136-.953l11.527-4.448c.535-.194 1.003.131.609.588z"/></svg>
+    <span id="tg-fab-badge" class="tg-badge">1</span>
+  </button>
+</div>
+
+<style>
+#tg-widget { position:fixed; bottom:16px; right:20px; z-index:9999; font-family:'Inter',sans-serif; }
+
+/* FAB button */
+.tg-fab {
+  width:52px; height:52px; border-radius:50%; border:none; cursor:pointer;
+  background:linear-gradient(135deg,#5fa8c8,#4a8fae);
+  box-shadow:0 2px 8px rgba(34,158,217,0.2);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform 0.25s, box-shadow 0.25s, background 0.25s, opacity 0.25s;
+  position:relative;
+  opacity:0.45;
+}
+.tg-fab:hover {
+  opacity:1;
+  background:linear-gradient(135deg,#229ED9,#1a7fb5);
+  transform:scale(1.1);
+  box-shadow:0 6px 20px rgba(34,158,217,0.6);
+}
+.tg-fab:active { transform:scale(0.95); }
+.tg-badge {
+  position:absolute; top:-2px; right:-2px;
+  background:#e53935; color:#fff; font-size:10px; font-weight:700;
+  width:18px; height:18px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  border:2px solid #fff;
+  animation:tg-pulse 2s infinite;
+}
+@keyframes tg-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
+
+/* Popup */
+.tg-popup {
+  position:absolute; bottom:68px; right:0;
+  width:310px; border-radius:16px; overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,0.18);
+  background:#fff;
+  transform-origin:bottom right;
+  animation:tg-open 0.25s cubic-bezier(0.34,1.56,0.64,1);
+}
+.tg-popup.hidden { display:none; }
+@keyframes tg-open { from{opacity:0;transform:scale(0.7)} to{opacity:1;transform:scale(1)} }
+
+.tg-popup-header {
+  background:linear-gradient(135deg,#229ED9,#1a7fb5);
+  padding:14px 16px; display:flex; align-items:center; gap:10px;
+}
+.tg-popup-avatar {
+  width:40px; height:40px; border-radius:50%;
+  background:rgba(255,255,255,0.2);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.tg-popup-info { flex:1; }
+.tg-popup-name { color:#fff; font-weight:700; font-size:14px; }
+.tg-popup-status { color:rgba(255,255,255,0.85); font-size:11px; display:flex; align-items:center; gap:4px; margin-top:1px; }
+.tg-online-dot { width:7px; height:7px; border-radius:50%; background:#4cff82; display:inline-block; }
+.tg-close-btn {
+  background:none; border:none; color:#fff; font-size:22px; cursor:pointer;
+  width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+  border-radius:50%; opacity:0.8; line-height:1;
+  transition:opacity 0.2s, background 0.2s;
+}
+.tg-close-btn:hover { opacity:1; background:rgba(255,255,255,0.15); }
+
+.tg-popup-body {
+  padding:16px 12px; background:#f0f4f8; display:flex; flex-direction:column; gap:8px;
+  max-height:200px; overflow-y:auto;
+}
+.tg-message-bubble {
+  background:#fff; border-radius:12px 12px 12px 2px;
+  padding:10px 12px; box-shadow:0 1px 4px rgba(0,0,0,0.08);
+  max-width:92%;
+}
+.tg-message-text { font-size:13px; color:#222; line-height:1.55; }
+.tg-message-time { font-size:10px; color:#999; margin-top:4px; text-align:right; }
+
+.tg-popup-footer { padding:12px; background:#fff; border-top:1px solid #eee; }
+.tg-open-btn {
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  background:linear-gradient(135deg,#229ED9,#1a7fb5);
+  color:#fff; text-decoration:none; border-radius:10px;
+  padding:11px; font-size:13px; font-weight:600;
+  transition:opacity 0.2s;
+}
+.tg-open-btn:hover { opacity:0.88; }
+</style>
+
+<script>
+function toggleTgWidget() {
+  const popup = document.getElementById('tg-popup');
+  const badge = document.getElementById('tg-fab-badge');
+  popup.classList.toggle('hidden');
+  if (!popup.classList.contains('hidden') && badge) badge.style.display = 'none';
+}
+
+// Hide widget on login page, show on other pages
+function updateTgWidgetVisibility() {
+  const widget = document.getElementById('tg-widget');
+  if (!widget) return;
+  const loginPage = document.getElementById('page-login');
+  const isLogin = loginPage && !loginPage.classList.contains('hidden') && getComputedStyle(loginPage).display !== 'none';
+  widget.style.display = isLogin ? 'none' : 'block';
+}
+
+// Observe page visibility changes (router switches pages by toggling hidden class)
+const _tgObserver = new MutationObserver(updateTgWidgetVisibility);
+document.addEventListener('DOMContentLoaded', function() {
+  const loginPage = document.getElementById('page-login');
+  if (loginPage) _tgObserver.observe(loginPage, { attributes: true, attributeFilter: ['class', 'style'] });
+  updateTgWidgetVisibility();
+});
+
+// Close on outside click
+document.addEventListener('click', function(e) {
+  const widget = document.getElementById('tg-widget');
+  if (widget && !widget.contains(e.target)) {
+    const popup = document.getElementById('tg-popup');
+    if (popup && !popup.classList.contains('hidden')) popup.classList.add('hidden');
+  }
+});
+</script>
+
 <!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -891,6 +1242,7 @@
 <script src="js/pages/shortlist.js"></script>
 <script src="js/pages/analytics.js"></script>
 <script src="js/pages/upload.js"></script>
+<script src="js/pages/audit.js"></script>
 <script src="js/pages/settings.js"></script>
 <script src="js/pages/methodology.js"></script>
 <script src="js/pages/pdf.js"></script>

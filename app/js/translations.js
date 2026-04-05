@@ -77,7 +77,6 @@ const TRANSLATIONS = {
     navScoring: "Скоринг",
     navShortlist: "Shortlist",
     navAnalytics: "Аналитика",
-    navMap: "Карта",
     navSettings: "Параметрлер",
     navUpload: "Деректер жүктеу",
     navReports: "Есептер",
@@ -325,6 +324,71 @@ const TRANSLATIONS = {
 
     // Months
     months: ["Қаң", "Ақп", "Нау", "Сәу", "Мам", "Мау", "Шіл", "Там", "Қыр", "Қаз", "Қар", "Жел"],
+
+    // Cluster labels
+    clusterHigh:   "Жоғары тиімді",
+    clusterMid:    "Тұрақты орташа",
+    clusterGrowth: "Өсу потенциалы",
+    clusterRisk:   "Тәуекелді",
+
+    // Nav titles
+    navTitleDashboard:  "Басқару тақтасы",
+    navTitleApplicants: "Өтінімдер",
+    navTitleDetail:     "Өтінім",
+    navTitleScoring:    "Скоринг",
+    navTitleShortlist:  "Shortlist",
+    navTitleAnalytics:  "Аналитика",
+    navTitleUpload:     "Деректер жүктеу",
+    navTitleAudit:      "Аудит журналы",
+    navTitleSettings:   "Параметрлер",
+    navTitleMethodology:"Методология",
+
+    // Applicants table extras
+    appColAppNum:   "Өтінім №",
+    appColRegion:   "Аудан / Облыс",
+    appColScore2:   "Балл",
+    appColCluster:  "Кластер",
+    appColProb:     "Ықтим.",
+    appColRisk2:    "Тәуекел",
+    appColRec:      "Ұсыным",
+    appFoundCount:  "өтінім табылды",
+    appFilterCluster:"Кластер",
+    appFilterAnomaly:"Аномалия",
+    appFilterAll:    "Барлығы",
+    anomalyHigh:     "Жоғары тәуекел",
+    anomalyAny:      "Кез-келген аномалия",
+    filterActive:    "сүзгі белсенді",
+
+    // NCALayer / EDS
+    ncaConnecting:   "NCALayer қосылуда...",
+    ncaSelectCert:   "Сертификат таңдаңыз...",
+    ncaVerifying:    "Тексерілуде...",
+    ncaNotInstalled: "NCALayer іске қосылмаған",
+    ncaDownloadLink: "Жүктеп алу →",
+    ncaCancelled:    "Сертификат таңдалмады. NCALayer терезесін жабпай таңдаңыз",
+    ncaExpired:      "ЭЦҚ мерзімі өтіп кеттен. Жаңа сертификат алыңыз",
+    ncaInvalidIIN:   "ЖСН анықталмады. Аутентификация (AUTH) кілтін таңдаңыз",
+    ncaReadError:    "NCALayer жауабы оқылмады",
+    ncaLayerHint:    'ЭЦҚ пайдалану үшін <a href="https://pki.gov.kz/ncalayer/" target="_blank" style="color:var(--primary);text-decoration:none">NCALayer</a> бағдарламасы орнатылуы керек',
+
+    // Login messages
+    loginVerifying:        "Тексерілуде...",
+    loginWrongCredentials: "Логин немесе пароль қате",
+    loginServerError:      "Сервер қатесі — бетті жаңартыңыз",
+    loginWelcome:          "Қош келдіңіз",
+    loggedOut:             "Жүйеден шықтыңыз",
+    loginDemoHint:         "Demo тіркелгілер",
+
+    // Dashboard alert
+    dashAlertTitle: "⚠️ Назар аударыңыз",
+
+    // Shortlist table headers (static th)
+    shortlistThDrag:   "⋮⋮",
+    shortlistThNum:    "#",
+    shortlistThDelete: "🗑",
+
+    // Settings
+    settingsAddUserBtn: "Қосу",
   },
 
   ru: {
@@ -401,7 +465,6 @@ const TRANSLATIONS = {
     navScoring: "Скоринг",
     navShortlist: "Шортлист",
     navAnalytics: "Аналитика",
-    navMap: "Карта",
     navSettings: "Настройки",
     navUpload: "Загрузка данных",
     navReports: "Отчёты",
@@ -635,6 +698,68 @@ const TRANSLATIONS = {
     toastFinalApproved: "Список утверждён!",
 
     months: ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"],
+
+    clusterHigh:   "Высокоэффективный",
+    clusterMid:    "Стабильно средний",
+    clusterGrowth: "Потенциал роста",
+    clusterRisk:   "Рисковый",
+
+    navTitleDashboard:  "Панель управления",
+    navTitleApplicants: "Заявки",
+    navTitleDetail:     "Заявка",
+    navTitleScoring:    "Скоринг",
+    navTitleShortlist:  "Шортлист",
+    navTitleAnalytics:  "Аналитика",
+    navTitleUpload:     "Загрузка данных",
+    navTitleAudit:      "Журнал аудита",
+    navTitleSettings:   "Настройки",
+    navTitleMethodology:"Методология",
+
+    appColAppNum:   "№ Заявки",
+    appColRegion:   "Район / Область",
+    appColScore2:   "Балл",
+    appColCluster:  "Кластер",
+    appColProb:     "Вероятн.",
+    appColRisk2:    "Риск",
+    appColRec:      "Рекоменд.",
+    appFoundCount:  "заявок найдено",
+    appFilterCluster:"Кластер",
+    appFilterAnomaly:"Аномалия",
+    appFilterAll:    "Все",
+    anomalyHigh:     "Высокий риск",
+    anomalyAny:      "Любая аномалия",
+    filterActive:    "фильтров активно",
+
+    // NCALayer / EDS
+    ncaConnecting:   "Подключение к NCALayer...",
+    ncaSelectCert:   "Выберите сертификат...",
+    ncaVerifying:    "Проверяется...",
+    ncaNotInstalled: "NCALayer не запущен",
+    ncaDownloadLink: "Скачать →",
+    ncaCancelled:    "Сертификат не выбран. Не закрывайте окно NCALayer при выборе",
+    ncaExpired:      "Срок действия ЭЦП истёк. Получите новый сертификат",
+    ncaInvalidIIN:   "ИИН не определён. Выберите ключ аутентификации (AUTH)",
+    ncaReadError:    "Не удалось прочитать ответ NCALayer",
+    ncaLayerHint:    'Для входа через ЭЦП установите <a href="https://pki.gov.kz/ncalayer/" target="_blank" style="color:var(--primary);text-decoration:none">NCALayer</a>',
+
+    // Login messages
+    loginVerifying:        "Проверяется...",
+    loginWrongCredentials: "Неверный логин или пароль",
+    loginServerError:      "Ошибка сервера — обновите страницу",
+    loginWelcome:          "Добро пожаловать",
+    loggedOut:             "Вы вышли из системы",
+    loginDemoHint:         "Демо аккаунты",
+
+    // Dashboard alert
+    dashAlertTitle: "⚠️ Внимание",
+
+    // Shortlist table headers (static th)
+    shortlistThDrag:   "⋮⋮",
+    shortlistThNum:    "#",
+    shortlistThDelete: "🗑",
+
+    // Settings
+    settingsAddUserBtn: "Добавить",
   },
 
   en: {
@@ -711,7 +836,6 @@ const TRANSLATIONS = {
     navScoring: "Scoring",
     navShortlist: "Shortlist",
     navAnalytics: "Analytics",
-    navMap: "Map",
     navSettings: "Settings",
     navUpload: "Upload Data",
     navReports: "Reports",
@@ -945,6 +1069,68 @@ const TRANSLATIONS = {
     toastFinalApproved: "List approved!",
 
     months: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+
+    clusterHigh:   "High Performing",
+    clusterMid:    "Stable Average",
+    clusterGrowth: "Growth Potential",
+    clusterRisk:   "At Risk",
+
+    navTitleDashboard:  "Dashboard",
+    navTitleApplicants: "Applications",
+    navTitleDetail:     "Application",
+    navTitleScoring:    "Scoring",
+    navTitleShortlist:  "Shortlist",
+    navTitleAnalytics:  "Analytics",
+    navTitleUpload:     "Upload Data",
+    navTitleAudit:      "Audit Log",
+    navTitleSettings:   "Settings",
+    navTitleMethodology:"Methodology",
+
+    appColAppNum:   "App. No.",
+    appColRegion:   "District / Region",
+    appColScore2:   "Score",
+    appColCluster:  "Cluster",
+    appColProb:     "Prob.",
+    appColRisk2:    "Risk",
+    appColRec:      "Recomm.",
+    appFoundCount:  "applications found",
+    appFilterCluster:"Cluster",
+    appFilterAnomaly:"Anomaly",
+    appFilterAll:    "All",
+    anomalyHigh:     "High risk",
+    anomalyAny:      "Any anomaly",
+    filterActive:    "filters active",
+
+    // NCALayer / EDS
+    ncaConnecting:   "Connecting to NCALayer...",
+    ncaSelectCert:   "Select certificate...",
+    ncaVerifying:    "Verifying...",
+    ncaNotInstalled: "NCALayer is not running",
+    ncaDownloadLink: "Download →",
+    ncaCancelled:    "Certificate not selected. Don't close the NCALayer window",
+    ncaExpired:      "EDS certificate has expired. Please renew it",
+    ncaInvalidIIN:   "IIN not found. Select an AUTH key",
+    ncaReadError:    "Could not read NCALayer response",
+    ncaLayerHint:    'Install <a href="https://pki.gov.kz/ncalayer/" target="_blank" style="color:var(--primary);text-decoration:none">NCALayer</a> to use EDS sign-in',
+
+    // Login messages
+    loginVerifying:        "Verifying...",
+    loginWrongCredentials: "Invalid login or password",
+    loginServerError:      "Server error — please refresh the page",
+    loginWelcome:          "Welcome",
+    loggedOut:             "You have been logged out",
+    loginDemoHint:         "Demo accounts",
+
+    // Dashboard alert
+    dashAlertTitle: "⚠️ Attention",
+
+    // Shortlist table headers (static th)
+    shortlistThDrag:   "⋮⋮",
+    shortlistThNum:    "#",
+    shortlistThDelete: "🗑",
+
+    // Settings
+    settingsAddUserBtn: "Add",
   }
 };
 
@@ -953,6 +1139,15 @@ function t(key) {
   const lang = window.currentLang || 'kk';
   return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || TRANSLATIONS['kk'][key] || key;
 }
+
+// Dynamic value translators — stored values are always in KK, translate at display time
+const _RISK_MAP   = { 'Төмен':'riskLow','Орташа':'riskMedium','Жоғары':'riskHigh', 'Низкий':'riskLow','Средний':'riskMedium','Высокий':'riskHigh', 'Low':'riskLow','Medium':'riskMedium','High':'riskHigh' };
+const _REC_MAP    = { 'Ұсынылды':'statusRecommended','Тексеруде':'statusReview','Ұсынылмайды':'statusRejected', 'Рекомендован':'statusRecommended','На проверке':'statusReview','Не рекомендован':'statusRejected', 'Recommended':'statusRecommended','Needs Review':'statusReview','Not Recommended':'statusRejected' };
+const _CLUSTER_MAP= { 'Жоғары тиімді':'clusterHigh','Тұрақты орташа':'clusterMid','Өсу потенциалы':'clusterGrowth','Тәуекелді':'clusterRisk', 'Высокоэффективный':'clusterHigh','Стабильно средний':'clusterMid','Потенциал роста':'clusterGrowth','Рисковый':'clusterRisk', 'High Performing':'clusterHigh','Stable Average':'clusterMid','Growth Potential':'clusterGrowth','At Risk':'clusterRisk' };
+
+function tRisk(v)    { return v ? t(_RISK_MAP[v]    || 'riskLow')            : '—'; }
+function tRec(v)     { return v ? t(_REC_MAP[v]     || 'statusPending')      : '—'; }
+function tCluster(v) { return v ? t(_CLUSTER_MAP[v] || 'clusterMid')         : '—'; }
 
 function setLanguage(lang) {
   if (!TRANSLATIONS[lang]) return;
@@ -970,10 +1165,13 @@ function setLanguage(lang) {
   document.querySelectorAll('[data-i18n-html]').forEach(el => {
     el.innerHTML = t(el.getAttribute('data-i18n-html'));
   });
-  document.querySelectorAll('.lang-btn').forEach(btn => {
+  document.querySelectorAll('.lang-btn, .lang-flat-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.lang === lang);
   });
   document.documentElement.lang = lang === 'kk' ? 'kk' : lang === 'ru' ? 'ru' : 'en';
+
+  // Re-render current page dynamic content
+  window.dispatchEvent(new CustomEvent('langchange', { detail: { lang } }));
 }
 
 // Initialize language

@@ -5,15 +5,22 @@ function generateShortlistPDF() {
   if (!AppState.shortlist.length) { showToast('Shortlist бос', 'warning'); return; }
   const now = new Date();
   const total = AppState.shortlist.reduce((s,a)=>s+(a.recommendedAmount||0),0);
-  const rows = AppState.shortlist.map((a,i) => `
-    <tr>
-      <td>${i+1}</td><td>${a.name}</td><td>${a.iin}</td><td>${a.region}</td>
-      <td>${a.productionType}</td>
-      <td style="text-align:center;font-weight:700;color:${(a.hybridScore||a.totalScore)>=70?'#1B5E20':(a.hybridScore||a.totalScore)>=50?'#F57F17':'#C62828'}">${a.hybridScore||a.totalScore}</td>
+  const rows = AppState.shortlist.map((a,i) => {
+    const score = a.hybridScore||a.totalScore;
+    const ident = a.name || a.appNum || a.id;
+    const subLabel = (a.direction||a.productionType||'').replace('Субсидирование затрат по ','').replace('Субсидирование ','').replace(/^в /,'').replace(/^по /,'').slice(0,28);
+    return `<tr>
+      <td>${i+1}</td>
+      <td><b>${ident}</b>${a.appNum&&a.name?`<br><span style="font-size:9px;color:#888">${a.appNum}</span>`:''}</td>
+      <td>${a.region||'—'}</td>
+      <td>${a.district||a.iin||'—'}</td>
+      <td>${subLabel||'—'}</td>
+      <td style="text-align:center;font-weight:700;color:${score>=70?'#1B5E20':score>=50?'#F57F17':'#C62828'}">${score}</td>
       <td>${formatMoney(a.requestedAmount)}</td>
       <td style="font-weight:600">${formatMoney(a.recommendedAmount)}</td>
-      <td style="color:${(a.hybridScore||a.totalScore)>=70?'#1B5E20':'#F57F17'}">${a.shortlistStatus||'Ұсынылды'}</td>
-    </tr>`).join('');
+      <td style="color:${score>=70?'#1B5E20':'#F57F17'}">${a.shortlistStatus||'Ұсынылды'}</td>
+    </tr>`;
+  }).join('');
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>AgriScore KZ — Shortlist ${now.getFullYear()}</title>
@@ -41,7 +48,7 @@ function generateShortlistPDF() {
     <div class="meta-item"><div class="meta-num">${AppState.shortlist.filter(a=>(a.hybridScore||a.totalScore)>=70).length}</div><div class="meta-lbl">Жоғары балл (70+)</div></div>
   </div>
   <table>
-    <thead><tr><th>#</th><th>Аты-жөні</th><th>ЖСН</th><th>Облыс</th><th>Өндіріс</th><th>Балл</th><th>Сұралған ₸</th><th>Ұсынылған ₸</th><th>Мәртебе</th></tr></thead>
+    <thead><tr><th>#</th><th>Өтініш / Нөмір</th><th>Облыс</th><th>Аудан</th><th>Бағыт</th><th>Балл</th><th>Сұралған ₸</th><th>Ұсынылған ₸</th><th>Мәртебе</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
   <div class="footer">

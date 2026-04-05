@@ -88,27 +88,32 @@ function renderScoringTab(a) {
   const inner = document.getElementById('scoring-tab-inner');
   if (!inner) return;
 
+  const dirShort = (d => d ? d.replace('Субсидирование затрат по ','').replace('Субсидирование ','').replace(/^в /,'').replace(/^по /,'') : '—')(a.direction);
+  const catLabel = { breeding_purchase:'Асыл тұқымды мал (≥100K/бас)', selection_work:'Селекциялық жұмыс (≥15K)', genetic_services:'Генетикалық қызметтер (≥5K)', production_premium:'Өнімділік үстемесі (≥500)', production_subsidy:'Өндіріс субсидиясы' };
   const factors = [
-    { name:'Субсидия тарихы', weight:'25%', score:a.factors?.f1||0, max:25, items:[
-      {ok:a.breakdown?.hasPreviousSubsidy,text:'Алдыңғы субсидия бар',pts:10},
-      {ok:a.breakdown?.usedFullSubsidy,text:'100% игерілген',pts:8},
-      {ok:a.breakdown?.reportsOnTime,text:'Есептер уақытылы',pts:7},
-      {ok:a.breakdown?.noViolations,text:'Бұзушылықтар жоқ',pts:5},
+    { name:'F1 — Мал басы / Масштаб', weight:'33%', score:a.factors?.f1||0, max:30, items:[
+      {ok:(a.headCount||0)>0,         text:`Мал саны: ${(a.headCount||0).toLocaleString()} бас`, pts:15},
+      {ok:(a.hcRatio||0)>=1,          text:`Аймақ медианасынан жоғары (×${(a.hcRatio||0).toFixed(2)})`, pts:10},
+      {ok:(a.headCount||0)>=50,       text:'Жеткілікті масштаб (≥50 бас)', pts:5},
     ]},
-    { name:'Өнімділік', weight:'30%', score:a.factors?.f2||0, max:30, items:[
-      {ok:a.breakdown?.aboveAvgYield,text:'Орташадан жоғары өнімділік',pts:12},
-      {ok:a.breakdown?.positiveTrend,text:'3 жылдық өсу тренді',pts:10},
-      {ok:a.breakdown?.costEfficient,text:'Шығын тиімділігі',pts:8},
+    { name:'F2 — Бағыт басымдылығы', weight:'28%', score:a.factors?.f2||0, max:25, items:[
+      {ok:!!a.direction,              text:`Бағыт: ${dirShort}`, pts:15},
+      {ok:(a.factors?.f2||0)>=20,     text:'Стратегиялық приоритет (≥80%)', pts:7},
+      {ok:(a.factors?.f2||0)>=12,     text:'Аймақтық маңызы бар бағыт', pts:3},
     ]},
-    { name:'Шаруашылық профилі', weight:'20%', score:a.factors?.f3||0, max:20, items:[
-      {ok:a.breakdown?.landAreaOk,text:`Жер алаңы оңтайлы (${a.landArea} га)`,pts:8},
-      {ok:a.breakdown?.equipmentOk,text:`Техника саны >5 (${a.equipmentCount})`,pts:7},
-      {ok:a.breakdown?.hasIrrigation,text:'Суландыру жүйесі',pts:5},
-    ]},
-    { name:'Әлеуметтік-экономикалық', weight:'15%', score:a.factors?.f4||0, max:15, items:[
-      {ok:a.breakdown?.manyEmployees,text:`Қызметкерлер >10 (${a.employees} адам)`,pts:6},
-      {ok:a.breakdown?.isRural,text:'Ауылдық аймақ',pts:5},
-      {ok:a.breakdown?.isMinorityRegion,text:'Аз тараған аймақ',pts:4},
+    { name:'F3 — Субсидия категориясы', weight:'22%', score:a.factors?.f3||0, max:20, items:[
+      {ok:a.subsidyCategory==='breeding_purchase', text:catLabel.breeding_purchase, pts:20},
+      {ok:a.subsidyCategory==='selection_work',    text:catLabel.selection_work, pts:16},
+      {ok:a.subsidyCategory==='genetic_services',  text:catLabel.genetic_services, pts:12},
+      {ok:a.subsidyCategory==='production_premium',text:catLabel.production_premium, pts:8},
+      {ok:a.subsidyCategory==='production_subsidy',text:catLabel.production_subsidy, pts:5},
+    ].filter(i=>i.ok).slice(0,1).concat([
+      {ok:a.normative>0, text:`Норматив: ${(a.normative||0).toLocaleString()} ₸/бас`, pts:0},
+    ])},
+    { name:'F4 — Аймақтық салыстыру', weight:'17%', score:a.factors?.f4||0, max:15, items:[
+      {ok:(a.requestedAmount||0)>0,   text:`Сұралған: ${formatMoney(a.requestedAmount||0)}`, pts:8},
+      {ok:(a.factors?.f4||0)>=10,     text:'Аймақ медианасынан жоғары сома', pts:5},
+      {ok:a.originalStatus==='Исполнена', text:'Алдыңғы субсидия игерілді ✓', pts:2},
     ]},
   ];
 
@@ -116,21 +121,16 @@ function renderScoringTab(a) {
   const an = detectAnomalies(a);
 
   const allItems = [
-    {ok:a.breakdown?.hasPreviousSubsidy, name:'Алдыңғы субсидия бар', pts:10},
-    {ok:a.breakdown?.usedFullSubsidy,    name:'100% игерілген',        pts:8},
-    {ok:a.breakdown?.reportsOnTime,      name:'Есептер уақытылы',      pts:7},
-    {ok:a.breakdown?.noViolations,       name:'Бұзушылықтар жоқ',      pts:5},
-    {ok:a.breakdown?.aboveAvgYield,      name:'Өнімділік орташадан жоғары', pts:12},
-    {ok:a.breakdown?.positiveTrend,      name:'3 жылдық өсу тренді',   pts:10},
-    {ok:a.breakdown?.costEfficient,      name:'Шығын тиімділігі',       pts:8},
-    {ok:a.breakdown?.landAreaOk,         name:'Жер алаңы оңтайлы',     pts:8},
-    {ok:a.breakdown?.equipmentOk,        name:'Техника >5 бірлік',      pts:7},
-    {ok:a.breakdown?.hasIrrigation,      name:'Суландыру бар',          pts:5},
-    {ok:a.breakdown?.manyEmployees,      name:'Қызметкерлер >10',       pts:6},
-    {ok:a.breakdown?.isRural,            name:'Ауылдық аймақ',          pts:5},
-    {ok:a.breakdown?.cleanCreditHistory, name:'Таза несие тарихы',      pts:4},
-    {ok:a.breakdown?.noTaxDebt,          name:'Салық берешегі жоқ',     pts:4},
-    {ok:a.breakdown?.noLegalDisputes,    name:'Сот дауы жоқ',           pts:2},
+    {ok:(a.headCount||0)>0,             name:`Мал саны бар: ${(a.headCount||0).toLocaleString()} бас`, pts:15},
+    {ok:(a.hcRatio||0)>=1,             name:`Аймақ медианасынан жоғары (×${(a.hcRatio||0).toFixed(2)})`, pts:10},
+    {ok:(a.factors?.f2||0)>=20,        name:'Стратегиялық бағыт (жоғары приоритет)', pts:9},
+    {ok:a.subsidyCategory==='breeding_purchase', name:'Асыл тұқымды мал категориясы', pts:8},
+    {ok:a.originalStatus==='Исполнена',name:'Алдыңғы субсидия сәтті игерілді', pts:8},
+    {ok:a.originalStatus!=='Отклонена',name:'Бас тартылмаған тарих', pts:5},
+    {ok:a.subsidyCategory==='selection_work',    name:'Селекциялық жұмыс категориясы', pts:7},
+    {ok:(a.factors?.f4||0)>=10,        name:'Аймақтық медианадан жоғары сома', pts:6},
+    {ok:(a.headCount||0)>=50,          name:'Жеткілікті масштаб (≥50 бас)', pts:5},
+    {ok:a.hasPreviousSubsidy,          name:'Субсидия тарихы бар', pts:5},
   ];
   const positives = allItems.filter(i => i.ok).sort((a,b) => b.pts - a.pts).slice(0, 4);
   const negatives = allItems.filter(i => !i.ok).sort((a,b) => b.pts - a.pts).slice(0, 4);
@@ -278,14 +278,34 @@ async function requestAIScoring(id) {
   const btn = document.getElementById('ai-score-btn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI бағалауда...'; }
 
+  // Build pasture compliance context
+  const haNorm = (typeof PASTURE_HA_PER_HEAD !== 'undefined' && PASTURE_HA_PER_HEAD[a.direction]) || 0;
+  const requiredHa = haNorm > 0 ? Math.round((a.headCount || 0) * haNorm) : 0;
+  const pastureStatus = haNorm === 0 ? 'жайылым талап етілмейді'
+    : !a.pastureArea ? 'жайылым деректері жоқ'
+    : a.pastureArea >= requiredHa ? `сәйкес (${a.pastureArea} га ≥ ${requiredHa} га қажет)`
+    : `сәйкессіз (${a.pastureArea} га < ${requiredHa} га қажет)`;
+
   const prompt = `Сен ауылшаруашылық субсидия скоринг жүйесісің. Мына өтінімді талдап, əр фактор бойынша балл қой.
 
-Шаруашылық: ${a.name}
-Аймақ: ${a.region}, жер: ${a.landArea} га, дақыл: ${a.cropType}
-Өнімділік: ${a.yield} т/га, техника: ${a.equipmentCount} бірлік
-Қызметкерлер: ${a.employees}, субсидия тарихы: ${a.hasPreviousSubsidy?'бар':'жоқ'}
-Игеру: ${a.subsidyUtilization}%, несие: ${a.creditScore}, суландыру: ${a.hasIrrigation?'бар':'жоқ'}
-Салық берешегі: ${a.hasTaxDebt?'бар':'жоқ'}, сот дауы: ${a.hasLegalDisputes?'бар':'жоқ'}
+СКОРИНГ ФАКТОРЛАРЫ (барлық баллдар):
+F1 Поголовье масштабы (max 30): бағыт медианасымен салыстыру + падеж тәуекелі. Медиана: скотоводство=142, овцеводство=200, птицеводство=12765, коневодство=38.
+F2 Бағыт басымдылығы (max 25): скотоводство=100%, искусственное осеменение=90%, птицеводство=85%, овцеводство=75%, свиноводство=70%, коневодство=60%, верблюдоводство=55%, пчеловодство=50%, козоводство=45%.
+F3 Субсидия категориясы (max 20): breeding_purchase=20, selection_work=16, genetic_services=12, production_premium=8, production_subsidy=5.
+F4 Аймақтық салыстыру (max 15): сұралған сома бағыт медианасынан жоғары болса — жоғары балл.
+
+ӨТІНІМ ДЕРЕКТЕРІ:
+Шаруашылық: ${a.name} (${a.entityType||'ЖТ'})
+Аймақ: ${a.region}, ${a.district}
+Бағыт: ${a.direction||a.productionType}
+Мал түрі: ${a.animalSubtype||'—'}, тұқым: ${a.animalBreed||'—'}
+Басы: ${a.headCount||0} бас, норматив: ${a.normative||0} тг/бас
+Жайылым: ${pastureStatus}
+Сұралған сома: ${(a.requestedAmount||0).toLocaleString()} тг
+Жылдық кіріс: ${(a.annualRevenue||0).toLocaleString()} тг, таза пайда: ${(a.netProfit||0).toLocaleString()} тг
+Субсидия категориясы: ${a.subsidyCategory||'—'}
+Қызметкерлер: ${a.employees||0}
+Детерминистік баллдар (жүйе есептеген): F1=${a.factors?.f1||0}, F2=${a.factors?.f2||0}, F3=${a.factors?.f3||0}, F4=${a.factors?.f4||0}
 
 Жауапты ТІКЕЛЕЙ JSON форматында бер:
 {"f1":{"score":0-30,"reason":"бір сөйлем қазақша"},"f2":{"score":0-25,"reason":"..."},"f3":{"score":0-20,"reason":"..."},"f4":{"score":0-15,"reason":"..."},"summary":"жалпы бағалау 2-3 сөйлем қазақша"}`;
@@ -296,9 +316,29 @@ async function requestAIScoring(id) {
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
     });
     const d = await res.json();
-    let text = d.demo
-      ? `{"f1":{"score":${a.factors?.f1||18},"reason":"Поголовье масштабы аймақ медианасына сəйкес."},"f2":{"score":${a.factors?.f2||18},"reason":"Бағыт ұлттық приоритетке сəйкес."},"f3":{"score":${a.factors?.f3||14},"reason":"Субсидия категориясы орташа деңгейде."},"f4":{"score":${a.factors?.f4||10},"reason":"Аймақтық салыстыру орташа."},"summary":"Өтінім орташа деңгейде бағаланды."}`
-      : (d.candidates?.[0]?.content?.parts?.[0]?.text || '');
+    let text;
+    if (d.demo) {
+      const sc = a.scenarioType || 'CLEAN';
+      const summaries = {
+        PASTURE_OVERLOAD:       `Жайылым ауыртпалығы критикалық деңгейде — нормативтен асып тұр. Жер телімінің растайтын құжаттары тексерілуі тиіс. Ұсыну алдында жайылым сәйкестігін міндетті түрде растау қажет.`,
+        HIGH_MORTALITY_RISK:    `Берілген бағытта табиғи падеж нормасы жоғары, бұл шаруашылықтың тұрақтылығына тәуекел туғызады. Ветеринарлық есептер мен жануарлар тізілімін қосымша тексеру ұсынылады.`,
+        DOCS_MISSING:           `Өтінімде бірқатар міндетті құжаттар жетіспейді. Субсидия бере алу мүмкіндігін растау үшін деректерді толықтыру талап етіледі.`,
+        AMOUNT_SUSPICIOUS:      `Сұралған сома аймақтық медианадан айтарлықтай асып тұр — қосымша тексеру қажет. Нормативтік есептеу дұрыстығы мен деректер сәйкестігін растаңыз.`,
+        POTENTIAL_DUPLICATE:    `Ұқсас атау мен аймақта бірнеше өтінім бар. Қайталану тәуекелі бар — ЖСН/БИН бойынша іздеу жүргізілуі тиіс.`,
+        CLEAN:                  `Өтінім толық, деректер жүйелі. Поголовье аймақтық медианаға сəйкес, жайылым нормасы орындалған. Скоринг бойынша субсидия беру ұсынылады.`,
+      };
+      const esc = s => String(s).replace(/"/g, "'").replace(/[\n\r]/g, ' ');
+      const dirShort = esc((a.direction||a.productionType||'Бағыт').replace('Субсидирование ','').replace('в ','').replace('затрат по ',''));
+      text = JSON.stringify({
+        f1: { score: a.factors?.f1||18, reason: `Поголовье ${a.headCount||0} бас — бағыт медианасымен салыстырғанда ${(a.hcRatio||1)>=1?'жоғары':'төмен'} деңгейде.` },
+        f2: { score: a.factors?.f2||18, reason: `${dirShort} бағыты ұлттық приоритетке сəйкес.` },
+        f3: { score: a.factors?.f3||14, reason: `Субсидия категориясы: ${a.subsidyCategory||'production_subsidy'}.` },
+        f4: { score: a.factors?.f4||10, reason: `Сұралған сома аймақтық медианамен салыстырғанда ${(a.requestedAmount||0)>=(a.normative||1)*100?'жоғары':'орташа'} деңгейде.` },
+        summary: summaries[sc]||summaries.CLEAN,
+      });
+    } else {
+      text = d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    }
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('JSON жауап алынбады');
     renderAIScoringResult(id, JSON.parse(jsonMatch[0]));
@@ -383,24 +423,63 @@ function initRadarChart(a) {
 function renderDataTab(a) {
   const el = document.getElementById('data-tab-content');
   if (!el) return;
+
+  // Pasture compliance check (Приказ №3-3/332)
+  const pastureNorm = (typeof PASTURE_HA_PER_HEAD !== 'undefined' && PASTURE_HA_PER_HEAD[a.direction]) || 0;
+  const requiredHa  = a.headCount && pastureNorm ? a.headCount * pastureNorm : 0;
+  const pastureArea = a.pastureArea || 0;
+  let pastureBadge  = '';
+  if (pastureNorm === 0) {
+    pastureBadge = '<span style="color:var(--text-muted);font-size:11px">Жабық ғимарат (жайылым қажет емес)</span>';
+  } else if (pastureArea > 0 && requiredHa > 0) {
+    const ratio = pastureArea / requiredHa;
+    pastureBadge = ratio >= 1
+      ? `<span style="color:var(--success);font-weight:600">✅ Норма сақталған (${Math.round(ratio*100)}%)</span>`
+      : ratio >= 0.6
+      ? `<span style="color:var(--warning);font-weight:600">⚠️ Жайылым жетіспейді (${Math.round(ratio*100)}%)</span>`
+      : `<span style="color:var(--danger);font-weight:600">❌ СӘЙКЕС ЕМЕС (${Math.round(ratio*100)}%) — Приказ №3-3/332</span>`;
+  }
+
+  // Mortality risk badge (Приказ №3-3/1061)
+  const mortality = (typeof MORTALITY_NORMS_BY_DIR !== 'undefined' && MORTALITY_NORMS_BY_DIR[a.direction]) || 0;
+  const mortalityBadge = mortality >= 7.5
+    ? `<span style="color:var(--danger);font-size:11px">⚠️ Жоғары өлім нормативі: ${mortality}% (Приказ №3-3/1061)</span>`
+    : mortality > 0
+    ? `<span style="color:var(--success);font-size:11px">✅ Өлім нормативі: ${mortality}%</span>`
+    : '';
+
   el.innerHTML = `<div class="data-grid">
     <div class="card data-card"><h4><i class="fas fa-id-card"></i> Жалпы мәліметтер</h4>
-      ${dr('ЖСН',a.iin)}${dr('БИН',a.bin||'—')}${dr('Нысан түрі',a.entityType)}${dr('Тіркелген',a.registrationDate)}${dr('Субсидия түрі',a.subsidyType)}
+      ${dr('ЖСН', a.iin || '<span style="color:var(--danger)">❌ Жоқ</span>')}
+      ${dr('БИН', a.bin || '—')}
+      ${dr('Нысан түрі', a.entityType || '—')}
+      ${dr('Субсидия түрі', a.subsidyType || '—')}
+      ${dr('Өтінім күні', a.applicationDate || '—')}
     </div>
     <div class="card data-card"><h4><i class="fas fa-map-marker-alt"></i> Орналасу</h4>
-      ${dr('Облыс',a.region)}${dr('Аудан',a.district)}${dr('Аймақ',a.isRural?'🌾 Ауылдық':'🏙 Қалалық')}
+      ${dr('Облыс', a.region || '—')}
+      ${dr('Аудан', a.district || '—')}
+      ${dr('Қызметкерлер', (a.employees || '—') + ' адам')}
     </div>
-    <div class="card data-card"><h4><i class="fas fa-tractor"></i> Жер қоры</h4>
-      ${dr('Жалпы алаң',formatNumber(a.landArea)+' га')}${dr('Меншік',formatNumber(a.landOwned)+' га')}${dr('Жалға алынған',formatNumber(a.landLeased)+' га')}${dr('Суландыру',a.hasIrrigation?'✅ Бар':'❌ Жоқ')}
+    <div class="card data-card"><h4><i class="fas fa-cow"></i> Мал шаруашылығы</h4>
+      ${dr('Бағыт', a.direction?.replace('Субсидирование ','').replace('в ','').replace('затрат по ','') || '—')}
+      ${dr('Мал өнімділік бағыты', a.animalSubtype || '—')}
+      ${dr('Тұқымы', a.animalBreed || '—')}
+      ${dr('Мал басы', a.headCount ? formatNumber(a.headCount) + ' бас' : '—')}
+      ${dr('Норматив', a.normative ? formatMoney(a.normative) + '/бас' : '<span style="color:var(--danger)">❌ Жоқ</span>')}
+      ${mortalityBadge ? dr('Табиғи өлім нормасы', mortalityBadge) : ''}
     </div>
-    <div class="card data-card"><h4><i class="fas fa-seedling"></i> Өндіріс</h4>
-      ${dr('Өндіріс түрі',a.productionType)}${a.mainCrops?.length?dr('Дақылдар',a.mainCrops.join(', ')):''}${a.livestock?dr('Мал басы',formatNumber(a.livestock)+' бас'):''}${dr('Өнімділік',a.productivity+'%')}
+    <div class="card data-card"><h4><i class="fas fa-seedling"></i> Жайылым / Жер қоры</h4>
+      ${dr('Жайылым ауданы', pastureArea > 0 ? formatNumber(pastureArea) + ' га' : pastureNorm === 0 ? '— (жабық)' : '<span style="color:var(--danger)">❌ Мәлімделмеген</span>')}
+      ${requiredHa > 0 ? dr('Қажетті аудан', formatNumber(Math.round(requiredHa)) + ' га') : ''}
+      ${pastureBadge ? dr('Жайылым нормасы', pastureBadge) : ''}
+      ${dr('Норматив (га/бас)', pastureNorm > 0 ? pastureNorm + ' га/бас' : 'Жайылым қолданылмайды')}
     </div>
     <div class="card data-card"><h4><i class="fas fa-chart-line"></i> Қаржы</h4>
-      ${dr('Жылдық айналым',formatMoney(a.annualRevenue))}${dr('Таза пайда',formatMoney(a.netProfit))}${dr('Сұралған субсидия',formatMoney(a.requestedAmount))}
-    </div>
-    <div class="card data-card"><h4><i class="fas fa-tools"></i> Ресурстар</h4>
-      ${dr('Техника саны',a.equipmentCount+' бірлік')}${dr('Қызметкерлер',a.employees+' адам')}
+      ${dr('Сұралған субсидия', formatMoney(a.requestedAmount))}
+      ${dr('Жылдық айналым', formatMoney(a.annualRevenue))}
+      ${dr('Таза пайда', formatMoney(a.netProfit))}
+      ${dr('Субсидия категориясы', (typeof SUBSIDY_CATEGORY_LABELS !== 'undefined' && SUBSIDY_CATEGORY_LABELS[a.subsidyCategory]) || a.subsidyCategory || '—')}
     </div>
   </div>`;
 }

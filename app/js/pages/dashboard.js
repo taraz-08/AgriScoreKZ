@@ -1,6 +1,11 @@
 'use strict';
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
+window.addEventListener('langchange', () => {
+  const page = document.getElementById('page-dashboard');
+  if (page && page.classList.contains('active')) initDashboard();
+});
+
 function initDashboard() {
   const stats = AppState.getStats();
   const today = new Date();
@@ -23,6 +28,49 @@ function initDashboard() {
   if (av) av.textContent = (user.login || 'A').charAt(0).toUpperCase();
 
   setTimeout(animateAllProgressBars, 200);
+
+  // Load real dataset stats from server
+  loadRealDatasetBanner();
+}
+
+function loadRealDatasetBanner() {
+  fetch('/api/real-stats')
+    .then(r => r.ok ? r.json() : null)
+    .then(s => {
+      if (!s) return;
+      const el = document.getElementById('real-dataset-banner');
+      if (!el) return;
+      el.style.display = '';
+      const pct = Math.round((s.recommended / s.total) * 100);
+      el.innerHTML = `
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+          <div style="flex:1;min-width:200px">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">
+              📊 Нақты деректер базасы — subsidy.plem.kz 2025
+            </div>
+            <div style="font-size:13px;color:var(--text-secondary)">
+              Жүйе <b style="color:var(--primary)">${s.total.toLocaleString()}</b> нақты өтінімді талдады •
+              Жалпы сома: <b>${(s.totalAmount/1e9).toFixed(1)} млрд ₸</b> •
+              18 облыс • 9 бағыт
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;flex-shrink:0">
+            <div style="text-align:center;padding:6px 12px;background:var(--success-pale,#E8F5E9);border-radius:8px">
+              <div style="font-size:18px;font-weight:800;color:var(--success)">${s.recommended.toLocaleString()}</div>
+              <div style="font-size:10px;color:var(--text-muted)">Ұсынылды</div>
+            </div>
+            <div style="text-align:center;padding:6px 12px;background:#FFF3E0;border-radius:8px">
+              <div style="font-size:18px;font-weight:800;color:#E65100">${s.review.toLocaleString()}</div>
+              <div style="font-size:10px;color:var(--text-muted)">Тексеруде</div>
+            </div>
+            <div style="text-align:center;padding:6px 12px;background:#FFEBEE;border-radius:8px">
+              <div style="font-size:18px;font-weight:800;color:var(--danger)">${s.rejected.toLocaleString()}</div>
+              <div style="font-size:10px;color:var(--text-muted)">Ұсынылмайды</div>
+            </div>
+          </div>
+        </div>`;
+    })
+    .catch(() => {});
 }
 
 function renderDashboardMLWidgets(stats) {

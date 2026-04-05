@@ -9,6 +9,7 @@ const PAGES = {
   '/shortlist':   'shortlist',
   '/analytics':   'analytics',
   '/upload':      'upload',
+  '/audit':       'audit',
   '/settings':    'settings',
   '/methodology': 'methodology',
 };
@@ -22,6 +23,7 @@ const PAGE_INITS = {
   shortlist:   () => initShortlist(),
   analytics:   () => initAnalytics(),
   upload:      () => initUpload(),
+  audit:       () => initAudit(),
   settings:    () => initSettings(),
   methodology: () => initMethodology(),
 };
@@ -64,13 +66,20 @@ function navigateTo(page) { location.hash = '#/' + page; }
 
 function updateNavTitle(id) {
   const map = {
-    dashboard:'Басқару тақтасы', applicants:'Өтінімдер', 'applicant-detail':'Өтінім',
-    scoring:'Скоринг', shortlist:'Shortlist', analytics:'Аналитика',
-    upload:'Деректер жүктеу', settings:'Параметрлер', methodology:'Методология',
+    dashboard:'navTitleDashboard', applicants:'navTitleApplicants', 'applicant-detail':'navTitleDetail',
+    scoring:'navTitleScoring', shortlist:'navTitleShortlist', analytics:'navTitleAnalytics',
+    upload:'navTitleUpload', audit:'navTitleAudit', settings:'navTitleSettings', methodology:'navTitleMethodology',
   };
   const el = document.getElementById('navbar-title');
-  if (el) el.textContent = map[id] || '';
+  if (el) el.textContent = map[id] ? t(map[id]) : '';
 }
+// Re-run title on lang change
+window.addEventListener('langchange', () => {
+  const hash = location.hash.replace('#','') || '/login';
+  const detail = hash.match(/^\/applicants\/(.+)$/);
+  const pid = detail ? 'applicant-detail' : (Object.entries(PAGES).find(([h]) => h === hash)?.[1] || '');
+  if (pid) updateNavTitle(pid);
+});
 
 function toggleSidebar() {
   const shell = document.getElementById('app-shell');

@@ -1,6 +1,11 @@
 'use strict';
 
 // ─── SCORING PAGE ─────────────────────────────────────────────────────────────
+window.addEventListener('langchange', () => {
+  const page = document.getElementById('page-scoring');
+  if (page && page.classList.contains('active')) initScoring();
+});
+
 function initScoring() {
   renderScoreHistogram();
   renderSegmentCards();
@@ -16,7 +21,7 @@ function runScoring() {
   if (section) section.classList.remove('hidden');
 
   let pct = 0;
-  const steps = ['Деректер оқылуда...','Факторлар есептелуде...','Нәтижелер дайындалуда...','✅ Аяқталды!'];
+  const steps = [t('scoreStep1'), t('scoreStep2'), t('scoreStep3'), `✅ ${t('scoreComplete')}`];
   const iv = setInterval(() => {
     pct += rnd(8, 18); if (pct > 100) pct = 100;
     if (bar) bar.style.width = pct + '%';
@@ -27,7 +32,7 @@ function runScoring() {
       renderScoreHistogram(); renderSegmentCards(); renderScoringTable(AppState.applicants);
       if (btn) btn.disabled = false;
       setTimeout(() => { if (section) section.classList.add('hidden'); if (bar) bar.style.width='0%'; }, 1200);
-      showToast(`✅ ${formatNumber(AppState.applicants.length)} өтінімдер бағаланды`, 'success');
+      showToast(`✅ ${formatNumber(AppState.applicants.length)} ${t('scoreComplete')}`, 'success');
     }
   }, 120);
 }
@@ -41,7 +46,7 @@ function renderScoreHistogram() {
   const labels = ['0-9','10-19','20-29','30-39','40-49','50-59','60-69','70-79','80-89','90-100'];
   const colors = labels.map((_,i) => i<5?'#EF5350':i<7?'#FF9800':'#4CAF50');
   Charts.histogram = new Chart(ctx, {
-    type:'bar', data:{ labels, datasets:[{label:'Өтінімдер',data:bins,backgroundColor:colors,borderRadius:4}] },
+    type:'bar', data:{ labels, datasets:[{label:t('navTitleApplicants'),data:bins,backgroundColor:colors,borderRadius:4}] },
     options:{ responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.parsed.y} өтінімдер`}} },
       scales:{ x:{grid:{display:false},ticks:{font:{size:11}}}, y:{beginAtZero:true,ticks:{font:{size:11},stepSize:1}} }
@@ -83,8 +88,8 @@ function renderScoringTable(data) {
       <td><div style="font-weight:600;font-family:monospace;font-size:12px">${a.appNum||a.name}</div><div style="font-size:11px;color:var(--text-muted)">${a.region}</div></td>
       <td style="font-size:13px">${a.region}</td>
       <td><span class="badge ${getScoreBadgeClass(sc)} ${sc>=90?'badge-pulse':''}">${sc}</span></td>
-      <td>${getRiskDot(a.riskLevel)} ${a.riskLevel}</td>
-      <td><span class="badge ${getStatusBadgeClass(a.recommendation)}">${a.recommendation}</span></td>
+      <td>${getRiskDot(a.riskLevel)} ${tRisk(a.riskLevel)}</td>
+      <td><span class="badge ${getStatusBadgeClass(a.recommendation)}">${tRec(a.recommendation)}</span></td>
       <td>
         <div class="row-actions" style="opacity:1">
           <button class="action-btn" onclick="navigateTo('applicants/${a.id}')"><i class="fas fa-eye"></i></button>

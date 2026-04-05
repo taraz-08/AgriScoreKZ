@@ -3,6 +3,11 @@
 // ─── SHORTLIST PAGE ───────────────────────────────────────────────────────────
 let dragSrc = null;
 
+window.addEventListener('langchange', () => {
+  const page = document.getElementById('page-shortlist');
+  if (page && page.classList.contains('active')) { renderShortlistBudget(); renderShortlistTable(); }
+});
+
 function initShortlist() { renderShortlistBudget(); renderShortlistTable(); }
 
 function renderShortlistBudget() {
@@ -13,10 +18,10 @@ function renderShortlistBudget() {
   const lbl = document.getElementById('budget-label');
   const fc  = document.getElementById('shortlist-footer-count');
   const fa  = document.getElementById('shortlist-footer-amount');
-  if(rem) rem.textContent = `Қалған: ${formatMoney(budget-total)}`;
+  if(rem) rem.textContent = `${t('shortlistRemaining')} ${formatMoney(budget-total)}`;
   if(bar) bar.style.width = pct+'%';
   if(lbl) lbl.textContent = `${formatMoney(total)} / ${formatMoney(budget)} (${pct}%)`;
-  if(fc)  fc.textContent  = `${formatNumber(AppState.shortlist.length)} өтінімдер`;
+  if(fc)  fc.textContent  = `${formatNumber(AppState.shortlist.length)} ${t('shortlistApplicants')}`;
   if(fa)  fa.textContent  = formatMoney(total);
 }
 
@@ -25,9 +30,9 @@ function renderShortlistTable() {
   if (!tbody) return;
   if (!AppState.shortlist.length) {
     tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state">
-      <div class="empty-icon">📋</div><div class="empty-title">Shortlist бос</div>
-      <div class="empty-subtitle">Өтінімдер бетінен өтінімдерді shortlist-ке қосыңыз</div>
-      <button class="btn btn-primary" onclick="navigateTo('applicants')"><i class="fas fa-list"></i> Өтінімдерге өту</button>
+      <div class="empty-icon">📋</div><div class="empty-title">${t('noData')}</div>
+      <div class="empty-subtitle">${t('shortlistSubtitle')}</div>
+      <button class="btn btn-primary" onclick="navigateTo('applicants')"><i class="fas fa-list"></i> ${t('navTitleApplicants')}</button>
     </div></td></tr>`; return;
   }
   tbody.innerHTML = AppState.shortlist.map((a,i)=>`
@@ -43,7 +48,7 @@ function renderShortlistTable() {
           onfocus="this.value='${a.recommendedAmount}'"
           onblur="updateRecAmount('${a.id}',this)">
       </td>
-      <td><span class="badge badge-success">${a.shortlistStatus||'Ұсынылды'}</span></td>
+      <td><span class="badge badge-success">${tRec(a.shortlistStatus||'Ұсынылды')}</span></td>
       <td><button class="action-btn danger" onclick="removeFromSL('${a.id}')"><i class="fas fa-trash"></i></button></td>
     </tr>`).join('');
 }

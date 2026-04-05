@@ -3,9 +3,10 @@
 const fs   = require('fs');
 const path = require('path');
 
-const DATA_DIR  = path.join(__dirname, '..', 'data');
-const DATA_FILE = path.join(DATA_DIR, 'applicants.json');
+const DATA_DIR   = path.join(__dirname, '..', 'data');
+const DATA_FILE  = path.join(DATA_DIR, 'applicants.json');
 const AUDIT_FILE = path.join(DATA_DIR, 'audit.json');
+const STATS_FILE = path.join(DATA_DIR, 'real_stats.json');
 
 // ─── SERVER-SIDE DATA STORE ───────────────────────────────────────────────────
 let store    = { applicants: [], shortlist: [], reviews: {}, synced: null };
@@ -118,6 +119,16 @@ async function handleData(url, req, res, ctx) {
       shortlisted: store.shortlist.length,
       reviewed:    Object.keys(store.reviews).length
     });
+  }
+
+  // ── API: Real Dataset Stats (from 36,651 real applications) ────────────────
+  if (url.pathname === '/api/real-stats' && req.method === 'GET') {
+    try {
+      if (fs.existsSync(STATS_FILE)) {
+        return ctx.json(res, 200, JSON.parse(fs.readFileSync(STATS_FILE, 'utf8')));
+      }
+    } catch {}
+    return ctx.json(res, 404, { error: 'real_stats.json not found' });
   }
 
   // ── API: Audit Log ──────────────────────────────────────────────────────────
