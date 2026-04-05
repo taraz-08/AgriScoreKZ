@@ -255,6 +255,14 @@ AgriScoreKZ/
 
 ---
 
+## Telegram-бот
+
+**[@AgriScoreKZ_AI_bot](https://t.me/AgriScoreKZ_AI_bot)** — AI-ассистент платформы в Telegram.
+
+Исходный код бота: [YersinGmail/AgriScoreKZ_TG](https://github.com/YersinGmail/AgriScoreKZ_TG)
+
+---
+
 ## Соответствие требованиям хакатона
 
 **AI inDrive Hackathon 2026 · Кейс 2**
